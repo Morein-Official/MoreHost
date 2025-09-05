@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>MoreHost — Ultra Legend UI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!-- CodeMirror core + theme + hints -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/darcula.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/hint/show-hint.min.css">
+
+<style>
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:#000;color:#fff;overflow:hidden}
+
+  /* 🌌 Moving stars background */
+  .stars{position:fixed;inset:0;z-index:-2;background:#000 url('https://www.script-tutorials.com/demos/360/images/stars.png') repeat;animation:spaceMove 160s linear infinite}
+  @keyframes spaceMove{from{background-position:0 0}to{background-position:-8000px 4000px}}
+  .vignette{position:fixed;inset:-20%;pointer-events:none;z-index:-1;background:radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,.7) 100%);filter:blur(2px)}
+
+  /* 🚀 Loading (2s) */
+  #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.6rem;background:#000;z-index:9999}
+  #loading .word{display:flex;gap:.12rem;font-weight:900;font-size:2.6rem;letter-spacing:.06em}
+  #loading .word span{display:inline-block;animation:flo 2s ease-in-out infinite alternate;color:#00e5ff;text-shadow:0 0 12px #00e5ff,0 0 24px #00e5ff}
+  #loading p{color:#86ffffcc;font-size:.95rem}
+  @keyframes flo{from{transform:translateY(0)}to{transform:translateY(-10px)}}
+
+  /* ===== Dashboard ===== */
+  #dashboard{display:none;height:100%;padding:32px;overflow:auto}
+  .container{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;align-items:center}
+  .title{font-size:1.35rem;font-weight:700;color:#e9fbff;margin-bottom:18px;text-align:center}
+
+  /* Center row for New Project */
+  .centerRow{display:flex;justify-content:center;align-items:center;width:100%;margin-top:6px;margin-bottom:24px}
+  .newBox{position:relative;isolation:isolate;width:280px;height:160px;border-radius:16px;
+    background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;
+    cursor:pointer;box-shadow:0 10px 40px rgba(0,0,0,.35);overflow:hidden;transition:.2s;backdrop-filter:blur(10px)}
+  .newBox:hover{transform:translateY(-2px)}
+  .newBox .label{display:flex;flex-direction:column;align-items:center;gap:.35rem;text-align:center}
+  .newBox .label .big{font-weight:900;letter-spacing:.06em}
+  .newBox .label .small{opacity:.8}
+  .newBox::after{content:"";position:absolute;inset:-30% -60%;
+    background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);
+    transform:translateX(-120%);animation:shine 3.2s infinite}
+  @keyframes shine{0%{transform:translateX(-120%)}60%{transform:translateX(120%)}100%{transform:translateX(120%)}}
+
+  /* Saved Projects center + inside box (larger) */
+  .savedWrap{width:100%;display:flex;flex-direction:column;align-items:center}
+  .savedBox{max-width:900px;width:100%;padding:18px;border-radius:16px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+  .projCard{height:130px;border-radius:14px;padding:14px;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column;justify-content:space-between;cursor:pointer}
+  .projCard:hover{background:rgba(255,255,255,.1)}
+  .projName{font-weight:800;color:#eaffff}
+  .projHint{opacity:.7;font-size:.9rem}
+
+  /* ===== Workspace ===== */
+  #workspace{display:none;height:100%}
+  .layout{display:grid;grid-template-columns:280px 1fr;height:100%}
+
+  /* Sidebar box */
+  .sidebar{background:rgba(8,8,12,.65);padding:12px}
+  .sideBox{height:100%;border-radius:16px;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column}
+  /* ⭐ Shiny Add File button */
+  #addFileBtn{
+    width:100%;padding:12px;border:0;border-radius:12px;cursor:pointer;
+    font-weight:900;letter-spacing:.02em;color:#001316;margin-bottom:10px;
+    background:linear-gradient(90deg,#00e5ff,#6cffff);position:relative;overflow:hidden
+  }
+  #addFileBtn::after{
+    content:"";position:absolute;inset:-40% -80%;transform:translateX(-120%);
+    background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,.6) 50%,transparent 60%);
+    animation:btnShine 2.8s ease-in-out infinite;pointer-events:none
+  }
+  @keyframes btnShine{0%{transform:translateX(-120%)}60%{transform:translateX(120%)}100%{transform:translateX(120%)}}
+
+  .cyanNote{color:#6CFFFF;font-size:.95rem;margin:6px 2px 10px 2px;opacity:.92}
+  .filesList{flex:1;overflow:auto;margin-top:6px}
+  .fileItem{padding:8px;border-radius:8px;margin-bottom:6px;background:#12151b;cursor:pointer;color:#cfefff;border:1px solid rgba(255,255,255,.06)}
+  .fileItem.active{background:#00e5ff;color:#001018;font-weight:800;border-color:#00e5ff}
+
+  /* Main area */
+  .main{display:flex;flex-direction:column;min-width:0}
+  .topbar{display:flex;gap:10px;justify-content:flex-end;padding:10px;background:rgba(10,10,14,.6);border-bottom:1px solid rgba(255,255,255,.08)}
+  .tbBtn{padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:800;color:#001316;background:linear-gradient(90deg,#00e5ff,#6cffff);border:0}
+  .tbBtn.save{background:linear-gradient(90deg,#7dff9a,#3be177);color:#00210a}
+  .editorWrap{flex:1;min-height:0}
+  .CodeMirror{height:100%;font-size:14px;background:#1e1e1e;color:#fff}
+  .cm-s-darcula.CodeMirror{background:#1e1e1e}
+  #noFileMsg{display:flex;align-items:center;justify-content:center;height:100%;font-size:1.05rem;color:#a5b7c2}
+
+  /* 🔍 Preview Modal (front) */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:9990}
+  .modalInner{width:92vw;height:88vh;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 10px 50px rgba(0,0,0,.6);position:relative}
+  .modalTop{position:absolute;top:8px;right:8px;z-index:2}
+  .closeBtn{border:0;border-radius:10px;padding:8px 12px;background:#ff5a5a;color:#2a0000;font-weight:800;cursor:pointer}
+  iframe#previewFrame{width:100%;height:100%;border:0;display:block}
+</style>
+</head>
+<body>
+  <div class="stars"></div><div class="vignette"></div>
+
+  <!-- 🚀 Loading -->
+  <div id="loading" aria-live="polite">
+    <div class="word" aria-label="MoreHost loading">
+      <span>M</span><span>o</span><span>r</span><span>e</span><span>H</span><span>o</span><span>s</span><span>t</span>
+    </div>
+    <p>Preparing your space…</p>
+  </div>
+
+  <!-- ===== Dashboard ===== -->
+  <section id="dashboard">
+    <div class="container">
+      <div class="title">Dashboard</div>
+
+      <div class="centerRow">
+        <div class="newBox" id="newProjectTrigger">
+          <div class="label">
+            <div class="big">NEW PROJECT</div>
+            <div class="small">Click to create</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="savedWrap">
+        <div class="title" style="margin:0 0 10px">Saved Projects</div>
+        <div class="savedBox">
+          <div class="grid" id="projectsGrid"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Workspace ===== -->
+  <section id="workspace">
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sideBox">
+          <button id="addFileBtn">+ Add File</button>
+          <div class="cyanNote">Please create a file to write code</div>
+          <div class="filesList" id="filesList"></div>
+        </div>
+      </aside>
+
+      <div class="main">
+        <div class="topbar">
+          <button class="tbBtn" id="previewBtn">▶ Preview</button>
+          <button class="tbBtn save" id="saveBtn">💾 Save</button>
+        </div>
+        <div class="editorWrap" id="editorWrap">
+          <div id="noFileMsg">Please Create a File To write code</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 🔍 Preview Modal -->
+  <div class="modal" id="previewModal" role="dialog" aria-modal="true" aria-label="Preview">
+    <div class="modalInner">
+      <div class="modalTop">
+        <button class="closeBtn" id="closePreview">Close ✖</button>
+      </div>
+      <iframe id="previewFrame" sandbox="allow-scripts"></iframe>
+    </div>
+  </div>
+
+  <!-- CodeMirror -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/matchbrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/selection/active-line.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/hint/show-hint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/hint/javascript-hint.min.js"></script>
+
+<script>
+  /* ===== State ===== */
+  let projects = JSON.parse(localStorage.getItem("ultraProjects")||"{}");
+  let currentProject=null,currentFile=null,editor=null;
+  const $=id=>document.getElementById(id);
+
+  /* 🚀 Loading → Dashboard (2 sec, no-stuck) */
+  window.addEventListener("load",()=>{
+    setTimeout(()=>{
+      const loadingEl = $("loading");
+      const dashEl = $("dashboard");
+      if(loadingEl) loadingEl.style.display="none";
+      if(dashEl) dashEl.style.display="block";
+      renderProjects();
+    },2000);
+  });
+
+  function saveProjects(){localStorage.setItem("ultraProjects",JSON.stringify(projects));}
+
+  /* ===== Dashboard ===== */
+  $("newProjectTrigger").onclick=()=>{
+    const name=prompt("Project name (no spaces)");
+    if(!name||/\s/.test(name))return alert("Invalid name");
+    if(projects[name]) return alert("Project already exists.");
+    projects[name]={}; saveProjects(); openProject(name);
+  };
+
+  function renderProjects(){
+    const g=$("projectsGrid"); g.innerHTML="";
+    const names=Object.keys(projects);
+    if(!names.length){
+      const e=document.createElement("div");e.style.opacity=".75";e.textContent="No saved projects yet.";g.appendChild(e);return;
+    }
+    names.forEach(n=>{
+      const c=document.createElement("div"); c.className="projCard";
+      c.innerHTML=`<div class="projName">${n}</div><div class="projHint">Click to open</div>`;
+      c.onclick=()=>openProject(n);
+      g.appendChild(c);
+    });
+  }
+
+  /* ===== Workspace ===== */
+  $("addFileBtn").onclick=()=>{
+    if(!currentProject) return alert("Open a project first.");
+    const fname=prompt("File name (e.g. index.html / style.css / app.js)");
+    if(!fname) return;
+    if(projects[currentProject][fname]) return alert("File exists.");
+    projects[currentProject][fname]="";
+    currentFile=fname; saveProjects(); renderFiles(); openFile(fname);
+  };
+  $("saveBtn").onclick=()=>{
+    if(!currentProject||!currentFile) return alert("No file open.");
+    projects[currentProject][currentFile]=editor.getValue(); saveProjects(); alert("Saved!");
+  };
+  $("previewBtn").onclick=()=>openPreview();
+  $("closePreview").onclick=()=>{ $("previewModal").style.display="none"; $("previewFrame").src="about:blank"; };
+
+  function openProject(name){
+    currentProject=name; $("dashboard").style.display="none"; $("workspace").style.display="block";
+    renderFiles(); showNoFileMsg();
+  }
+
+  function renderFiles(){
+    const list=$("filesList"); list.innerHTML="";
+    const files=projects[currentProject]||{};
+    const names=Object.keys(files);
+    if(names.length===0){
+      // cyan note already visible; nothing else
+    }
+    names.forEach(fname=>{
+      const div=document.createElement("div");
+      div.className="fileItem"+(fname===currentFile?" active":"");
+      div.textContent=fname;
+      div.onclick=()=>openFile(fname);
+      list.appendChild(div);
+    });
+  }
+
+  function showNoFileMsg(){
+    $("editorWrap").innerHTML="<div id='noFileMsg'>Please Create a File To write code</div>";
+    editor=null; currentFile=null;
+  }
+
+  /* ===== Editor ===== */
+  function ensureEditor(){
+    if(editor) return;
+    editor=CodeMirror($("editorWrap"),{
+      value:"",
+      mode:"javascript",
+      theme:"darcula",
+      lineNumbers:true,
+      styleActiveLine:true,
+      matchBrackets:true,
+      autoCloseBrackets:true,
+      tabSize:2, indentUnit:2,
+      extraKeys:{
+        "Ctrl-Space":"autocomplete",
+        "Tab": cm => cm.somethingSelected() ? cm.indentSelection("add") : cm.replaceSelection("  ")
+      }
+    });
+    // JS auto recommend
+    editor.on("inputRead",(cm,e)=>{
+      if(e.text && e.text[0] && /[\w\.\(]/.test(e.text[0])) cm.showHint({completeSingle:false});
+    });
+  }
+
+  function detectModeByName(name){
+    const l=name.toLowerCase();
+    if(l.endsWith(".js")) return "javascript";
+    if(l.endsWith(".css")) return "css";
+    return "htmlmixed"; // default for others
+  }
+
+  function openFile(fname){
+    currentFile=fname; renderFiles();
+    $("editorWrap").innerHTML=""; ensureEditor();
+    const mode=detectModeByName(fname);
+    editor.setOption("mode",mode);
+    let val = projects[currentProject][fname] || "";
+    if(!val && fname.endsWith(".js")) val = "// Start Your Coding from here";
+    editor.setValue(val);
+    editor.focus();
+  }
+
+  /* ===== Preview (Modal front, big-code capable) ===== */
+  function openPreview(){
+    if(!currentProject){ alert("Open a project first."); return; }
+    const files = projects[currentProject] || {};
+    const names = Object.keys(files);
+    if(!names.length){ alert("No files to preview."); return; }
+
+    const htmlName = names.find(n=>n.toLowerCase().endsWith(".html"));
+    const cssParts = names.filter(n=>n.toLowerCase().endsWith(".css")).map(n=>files[n]||"");
+    const jsParts  = names.filter(n=>n.toLowerCase().endsWith(".js")).map(n=>files[n]||"");
+
+    let html = htmlName ? files[htmlName] : null;
+
+    if(!html){
+      // synthesize minimal HTML with default white bg
+      const cssBundle = cssParts.join("\n\n/* ---- next file ---- */\n\n");
+      const jsBundle  = jsParts.join("\n\n// ---- next file ---- \n\n");
+      html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Preview – ${currentProject}</title>
+<style>html,body{height:100%}body{background:#fff;color:#111;margin:0;font-family:Arial}</style>
+<style>${escapeHTML(cssBundle)}</style>
+</head><body>
+<div id="app"></div>
+<script>(function(){\n${jsBundle}\n})();</script>
+</body></html>`;
+    }else{
+      // If user HTML present: inject CSS/JS and enforce white bg fallback when none set
+      const needBg = !/body\s*\{[^}]*background/i.test(html) && !/background:/i.test(html);
+      const cssTag = cssParts.length ? `<style>\n${escapeHTML(cssParts.join("\n"))}\n</style>` : "";
+      const jsTag  = jsParts.length ? `<script>\n${jsParts.join("\n")}\n</script>` : "";
+      if(!/<head>/i.test(html)) html = html.replace(/<html[^>]*>/i,"$&<head></head>");
+      html = html.replace(/<head>/i, `<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${needBg?`<style>body{background:#fff}</style>`:""}${cssTag}`);
+      if(/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, `${jsTag}</body>`);
+      else html += jsTag;
+    }
+
+    // Show modal and write content
+    $("previewModal").style.display="flex";
+    const frame = $("previewFrame");
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    doc.open(); doc.write(html); doc.close();
+  }
+
+  function escapeHTML(s){
+    return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+</script>
+</body>
+</html>
