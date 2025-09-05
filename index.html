@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoreHost</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      color: white;
+      background: radial-gradient(ellipse at bottom, #0a0a0f 0%, #000000 100%);
+      overflow: hidden;
+    }
+
+    /* Moving stars */
+    .stars, .stars:after {
+      content: " ";
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 2px;
+      background: transparent;
+      box-shadow: 
+        100px 200px white, 500px 300px white, 800px 1200px white, 
+        1500px 700px white, 2000px 900px white, 2500px 1100px white, 
+        300px 1500px white, 1200px 1800px white;
+      animation: animStars 60s linear infinite;
+    }
+    .stars:after { top: 2000px; }
+    @keyframes animStars {
+      from { transform: translateY(0px); }
+      to { transform: translateY(-2000px); }
+    }
+
+    /* Loading letters floating individually */
+    .loading-text {
+      display: flex;
+      gap: 5px;
+      font-size: 3rem;
+      font-weight: bold;
+      color: #00e5ff;
+      text-shadow: 0 0 10px #00e5ff, 0 0 20px #00e5ff, 0 0 40px #00e5ff;
+    }
+    .loading-text span {
+      display: inline-block;
+      animation: float 2s ease-in-out infinite;
+    }
+    .loading-text span:nth-child(1) { animation-delay: 0s; }
+    .loading-text span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-text span:nth-child(3) { animation-delay: 0.4s; }
+    .loading-text span:nth-child(4) { animation-delay: 0.6s; }
+    .loading-text span:nth-child(5) { animation-delay: 0.8s; }
+    .loading-text span:nth-child(6) { animation-delay: 1s; }
+    .loading-text span:nth-child(7) { animation-delay: 1.2s; }
+    .loading-text span:nth-child(8) { animation-delay: 1.4s; }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+  </style>
+</head>
+<body class="relative">
+
+  <!-- Moving stars -->
+  <div class="stars"></div>
+
+  <!-- Loading screen -->
+  <div id="loading" class="flex items-center justify-center h-screen bg-black z-50 absolute top-0 left-0 w-full">
+    <h1 class="loading-text">
+      <span>M</span><span>o</span><span>r</span><span>e</span>
+      <span>H</span><span>o</span><span>s</span><span>t</span>
+    </h1>
+  </div>
+
+  <!-- Sign Up -->
+  <div id="signup" class="hidden h-screen flex items-center justify-center">
+    <div class="bg-gray-900 bg-opacity-70 backdrop-blur-xl p-10 rounded-2xl w-96 text-center shadow-2xl">
+      <h2 class="text-3xl font-bold mb-6">Sign Up</h2>
+      <input id="name" type="text" placeholder="Enter Name" class="w-full mb-4 px-4 py-2 rounded bg-gray-800">
+      <input id="password" type="password" placeholder="Enter Password" class="w-full mb-4 px-4 py-2 rounded bg-gray-800">
+      <input id="pic" type="file" accept="image/*" class="w-full mb-4">
+      <button onclick="signUp()" class="bg-cyan-500 px-4 py-2 rounded w-full">Sign Up</button>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden p-10">
+    <h1 class="text-4xl font-bold mb-6">Dashboard</h1>
+    <button onclick="createProject()" class="bg-cyan-500 px-4 py-2 rounded-xl">+ New Project</button>
+    <div id="projects" class="mt-6 space-y-4"></div>
+  </div>
+
+  <!-- Workspace -->
+  <div id="workspace" class="hidden h-screen flex flex-col">
+    <div class="flex justify-between items-center p-4 bg-gray-900">
+      <h2 id="projectName" class="text-xl font-bold"></h2>
+      <button onclick="showPreview()" class="bg-green-500 px-4 py-2 rounded">Preview</button>
+    </div>
+    <div class="flex h-full">
+      <!-- File List -->
+      <div id="fileList" class="w-60 bg-gray-800 p-4 overflow-y-auto">
+        <button onclick="addFile()" class="w-full bg-blue-500 px-2 py-1 mb-4 rounded">+ Add File</button>
+        <div id="files"></div>
+      </div>
+
+      <!-- Editor -->
+      <div id="editor" class="flex-1"></div>
+      <iframe id="preview" class="hidden w-full h-full"></iframe>
+    </div>
+  </div>
+
+  <script>
+    let editor;
+    let currentProject = null;
+    let currentFile = null;
+    let projects = {};
+
+    // Auto hide loading after 2s
+    setTimeout(() => {
+      document.getElementById('loading').style.display = 'none';
+      initApp();
+    }, 2000);
+
+    function initApp() {
+      const user = localStorage.getItem("user");
+      if (user) {
+        document.getElementById('dashboard').classList.remove('hidden');
+      } else {
+        document.getElementById('signup').classList.remove('hidden');
+      }
+    }
+
+    function signUp() {
+      const name = document.getElementById("name").value;
+      const password = document.getElementById("password").value;
+      const picFile = document.getElementById("pic").files[0];
+
+      if (!name || !password || !picFile) {
+        alert("Please fill all fields!");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const user = {
+          name: name,
+          password: password,
+          picture: e.target.result
+        };
+        localStorage.setItem("user", JSON.stringify(user));
+        document.getElementById('signup').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+      };
+      reader.readAsDataURL(picFile);
+    }
+
+    function createProject() {
+      let name = prompt("Enter project name (no spaces allowed):");
+      if (!name) return;
+
+      // remove spaces
+      if (/\s/.test(name)) {
+        alert("Spaces are not allowed in project name. Use '-' or '_'.");
+        return;
+      }
+
+      projects[name] = { files: {} };
+      const project = document.createElement("div");
+      project.className = "p-4 bg-gray-800 rounded cursor-pointer";
+      project.innerText = name;
+      project.onclick = () => openWorkspace(name);
+      document.getElementById('projects').appendChild(project);
+    }
+
+    function openWorkspace(name) {
+      currentProject = projects[name];
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('workspace').classList.remove('hidden');
+      document.getElementById('projectName').innerText = name;
+      document.getElementById('files').innerHTML = "";
+    }
+
+    function addFile() {
+      const fileName = prompt("Enter file name (example: index.html):");
+      if (!fileName) return;
+      if (currentProject.files[fileName]) {
+        alert("File already exists!");
+        return;
+      }
+      currentProject.files[fileName] = "<!-- Start coding here -->";
+      const fileDiv = document.createElement("div");
+      fileDiv.className = "p-2 bg-gray-700 rounded mb-2 cursor-pointer";
+      fileDiv.innerText = fileName;
+      fileDiv.onclick = () => openFile(fileName);
+      document.getElementById('files').appendChild(fileDiv);
+    }
+
+    function openFile(fileName) {
+      currentFile = fileName;
+      if (!editor) {
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+        require(["vs/editor/editor.main"], function () {
+          editor = monaco.editor.create(document.getElementById('editor'), {
+            value: currentProject.files[fileName],
+            language: "html",
+            theme: "vs-dark",
+          });
+        });
+      } else {
+        editor.setValue(currentProject.files[fileName]);
+      }
+    }
+
+    function showPreview() {
+      if (!currentFile) {
+        alert("Please open a file first!");
+        return;
+      }
+      currentProject.files[currentFile] = editor.getValue();
+      const code = currentProject.files[currentFile];
+      const iframe = document.getElementById('preview');
+      iframe.classList.remove('hidden');
+      iframe.srcdoc = code;
+    }
+  </script>
+</body>
+</html>
