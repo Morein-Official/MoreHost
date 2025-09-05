@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MoreHost – Ultra Legend Pro UI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- CodeMirror -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;background:#000;color:#fff;font-family:Inter,system-ui,Arial,sans-serif;overflow:hidden}
+
+    /* 🌌 Space background (moving stars) */
+    .stars{
+      position:fixed;inset:0;z-index:-2;
+      background:#000 url('https://www.script-tutorials.com/demos/360/images/stars.png') repeat;
+      animation:spaceMove 160s linear infinite;
+    }
+    @keyframes spaceMove{
+      from{background-position:0 0}
+      to{background-position:-8000px 4000px}
+    }
+
+    /* ✨ Subtle vignette */
+    .vignette{position:fixed;inset:-20%;pointer-events:none;z-index:-1;
+      background:radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,.7) 100%);
+      filter:blur(2px)
+    }
+
+    /* 🚀 Loading (2s) */
+    #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.6rem;background:#000;z-index:9999}
+    #loading .word{display:flex;gap:.15rem;font-weight:800;font-size:2.6rem;letter-spacing:.06em}
+    #loading .word span{display:inline-block;animation:flo 2s ease-in-out infinite alternate;color:#00e5ff;text-shadow:0 0 12px #00e5ff,0 0 24px #00e5ff}
+    #loading .word span:nth-child(1){animation-delay:0s}
+    #loading .word span:nth-child(2){animation-delay:.15s}
+    #loading .word span:nth-child(3){animation-delay:.3s}
+    #loading .word span:nth-child(4){animation-delay:.45s}
+    #loading .word span:nth-child(5){animation-delay:.6s}
+    #loading .word span:nth-child(6){animation-delay:.75s}
+    #loading .word span:nth-child(7){animation-delay:.9s}
+    #loading .word span:nth-child(8){animation-delay:1.05s}
+    @keyframes flo{from{transform:translateY(0)}to{transform:translateY(-10px)}}
+    #loading p{color:#86ffffcc;font-size:.95rem}
+
+    /* ===== Dashboard ===== */
+    #dashboard{display:none;height:100%;padding:32px;overflow:auto}
+    .container{max-width:1100px;margin:0 auto}
+    .titleRow{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .titleRow h1{font-size:1.35rem;font-weight:700;color:#e9fbff}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+    .subheading{margin:18px 0 10px;color:#c7f9ffcc;font-weight:600}
+
+    /* 💎 Shiny New Project card */
+    .newBox{
+      position:relative;isolation:isolate;
+      height:150px;border-radius:16px;
+      background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.14);
+      display:flex;align-items:center;justify-content:center;cursor:pointer;
+      box-shadow:0 10px 40px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06);
+      overflow:hidden;transition:transform .2s ease, box-shadow .2s ease;
+      backdrop-filter:blur(10px)
+    }
+    .newBox:hover{transform:translateY(-2px);box-shadow:0 16px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.08)}
+    .newBox .label{display:flex;flex-direction:column;align-items:center;gap:.35rem}
+    .newBox .label .big{font-weight:800;font-size:1.05rem;letter-spacing:.08em;color:#001b1f;background:linear-gradient(90deg,#48ffff,#7dfcfc,#b6ffff);
+      -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    .newBox .label .small{font-size:.85rem;color:#d8ffffaa}
+    /* Shine sweep */
+    .newBox::after{
+      content:"";position:absolute;inset:-30% -60%;
+      background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);
+      transform:translateX(-120%);animation:shine 3.2s ease-in-out infinite
+    }
+    @keyframes shine{0%{transform:translateX(-120%)}60%{transform:translateX(120%)}100%{transform:translateX(120%)}}
+
+    /* Saved project card */
+    .projCard{
+      height:120px;border-radius:14px;padding:14px;
+      background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.12);
+      display:flex;flex-direction:column;justify-content:space-between;
+      cursor:pointer;transition:transform .15s ease, background .2s ease;backdrop-filter:blur(8px)
+    }
+    .projCard:hover{transform:translateY(-2px);background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.03))}
+    .projName{font-weight:700}
+    .projHint{font-size:.8rem;color:#cdefff99}
+
+    /* ===== Workspace ===== */
+    #workspace{display:none;height:100%}
+    .layout{display:grid;grid-template-columns:230px 1fr;height:100%}
+    .sidebar{
+      border-right:1px solid rgba(255,255,255,.1);
+      background:rgba(8,8,12,.65);backdrop-filter:blur(8px);padding:12px 10px;overflow:auto
+    }
+    .sideTitle{font-weight:700;color:#c8faff;margin-bottom:10px;font-size:.95rem}
+    .sideBtn{
+      width:100%;padding:9px 10px;margin-bottom:10px;border:0;border-radius:10px;cursor:pointer;
+      background:linear-gradient(90deg,#00e5ff,#5df9ff);color:#001316;font-weight:700
+    }
+    .fileItem{
+      padding:8px 10px;border-radius:8px;margin-bottom:6px;background:#12151b;cursor:pointer;border:1px solid rgba(255,255,255,.06);
+      color:#cfefff;font-size:.92rem
+    }
+    .fileItem.active{background:#00e5ff;color:#001018;font-weight:800;border-color:#00e5ff}
+
+    .main{display:flex;flex-direction:column;min-width:0}
+    .topbar{
+      display:flex;gap:10px;justify-content:flex-end;align-items:center;padding:10px;
+      border-bottom:1px solid rgba(255,255,255,.1);background:rgba(10,10,14,.6);backdrop-filter:blur(8px)
+    }
+    .tbBtn{
+      padding:8px 14px;border:0;border-radius:10px;cursor:pointer;font-weight:700;color:#001316;
+      background:linear-gradient(90deg,#00e5ff,#6cffff)
+    }
+    .tbBtn.red{background:linear-gradient(90deg,#ff4d4d,#ffa3a3);color:#190000}
+    .editorWrap{flex:1;min-height:0}
+    .CodeMirror{height:100%;font-size:14px;background:#1e1e1e;color:#fff}
+
+    /* 🔍 Preview overlay */
+    #preview{position:fixed;inset:0;display:none;z-index:9000;background:#fff}
+    #preview iframe{width:100%;height:100%;border:0}
+    #closePreview{position:absolute;top:14px;right:14px}
+
+    /* 🔐 Modal */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:7000}
+    .modalCard{
+      width:92%;max-width:420px;border-radius:16px;padding:18px 16px;background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(10px)
+    }
+    .modalCard h3{margin-bottom:10px}
+    .input{
+      width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.18);
+      background:rgba(0,0,0,.4);color:#e3feff;outline:none
+    }
+    .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+    .ghost{background:#1a1f27;color:#bfefff;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 14px;cursor:pointer}
+    .primary{background:linear-gradient(90deg,#00e5ff,#6cffff);color:#001316;border:0;border-radius:10px;padding:8px 14px;cursor:pointer;font-weight:800}
+  </style>
+</head>
+<body>
+  <div class="stars"></div><div class="vignette"></div>
+
+  <!-- 🚀 Loading (2s) -->
+  <div id="loading" aria-live="polite">
+    <div class="word">
+      <span>M</span><span>o</span><span>r</span><span>e</span><span>H</span><span>o</span><span>s</span><span>t</span>
+    </div>
+    <p>Preparing your space…</p>
+  </div>
+
+  <!-- ===== Dashboard ===== -->
+  <section id="dashboard">
+    <div class="container">
+      <div class="titleRow">
+        <h1>Dashboard</h1>
+      </div>
+
+      <div class="grid" style="margin-bottom:14px">
+        <!-- Shiny New Project box -->
+        <div class="newBox" id="newProjectTrigger" title="Create New Project">
+          <div class="label">
+            <div class="big">NEW PROJECT</div>
+            <div class="small">Click to create</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subheading">Saved Projects</div>
+      <div class="grid" id="projectsGrid"></div>
+    </div>
+  </section>
+
+  <!-- ===== Workspace ===== -->
+  <section id="workspace" hidden>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sideTitle">Files</div>
+        <button class="sideBtn" id="addFileBtn">+ Add File</button>
+        <div id="filesList"></div>
+      </aside>
+      <div class="main">
+        <div class="topbar">
+          <button class="tbBtn" id="saveBtn">💾 Save</button>
+          <button class="tbBtn" id="previewBtn">▶ Preview</button>
+          <button class="tbBtn red" id="backBtn">⬅ Back</button>
+        </div>
+        <div class="editorWrap" id="editor"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 🔍 Preview -->
+  <div id="preview">
+    <button id="closePreview" class="tbBtn red">✖ Close Preview</button>
+    <iframe id="previewFrame"></iframe>
+  </div>
+
+  <!-- 🔐 Modal: New Project Name -->
+  <div class="modal" id="nameModal" role="dialog" aria-modal="true">
+    <div class="modalCard">
+      <h3>Project name</h3>
+      <input id="projectNameInput" class="input" placeholder="e.g. my_portfolio (no spaces)"/>
+      <div style="color:#9eeeff;margin-top:6px;font-size:.85rem">Allowed: letters, numbers, -, _ (no spaces)</div>
+      <div class="actions">
+        <button class="ghost" id="cancelName">Cancel</button>
+        <button class="primary" id="confirmName">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CodeMirror -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+
+  <script>
+    /* ===== App State ===== */
+    let projects = JSON.parse(localStorage.getItem("ultraProjects")||"{}");
+    let currentProject = null;
+    let currentFile = null;
+    let editor = null;
+
+    const $ = id => document.getElementById(id);
+    const show = el => (el.hidden=false, el.style.display="", el);
+    const hide = el => (el.hidden=true, el.style.display="none", el);
+
+    /* ===== Loading -> Dashboard (2s, no-stuck) ===== */
+    window.addEventListener("load", () => {
+      setTimeout(() => {
+        hide($("loading"));
+        show($("dashboard"));
+        renderProjects();
+      }, 2000);
+    });
+
+    /* ===== Storage helpers ===== */
+    function saveProjects(){ localStorage.setItem("ultraProjects", JSON.stringify(projects)); }
+
+    /* ===== Dashboard ===== */
+    $("newProjectTrigger").onclick = () => openNameModal();
+    function openNameModal(){
+      $("projectNameInput").value = "";
+      show($("nameModal"));
+      setTimeout(() => $("projectNameInput").focus(), 50);
+    }
+    $("cancelName").onclick = () => hide($("nameModal"));
+    $("confirmName").onclick = createProjectFromModal;
+    $("projectNameInput").addEventListener("keydown", (e)=>{
+      if(e.key==="Enter") createProjectFromModal();
+      if(e.key==="Escape") hide($("nameModal"));
+    });
+
+    function validProjectName(name){
+      return /^[A-Za-z0-9_-]+$/.test(name); // no spaces
+    }
+
+    function createProjectFromModal(){
+      const name = $("projectNameInput").value.trim();
+      if(!validProjectName(name)) return alert("Invalid name. Use letters, numbers, - or _ (no spaces).");
+      if(projects[name]) return alert("Project already exists.");
+      projects[name] = {}; // empty project
+      saveProjects();
+      hide($("nameModal"));
+      openProject(name); // auto open
+    }
+
+    function renderProjects(){
+      const grid = $("projectsGrid");
+      grid.innerHTML = "";
+      const names = Object.keys(projects);
+      if(!names.length){
+        const empty = document.createElement("div");
+        empty.style.opacity=".7";
+        empty.textContent = "No saved projects yet.";
+        grid.appendChild(empty);
+        return;
+      }
+      names.forEach(name=>{
+        const card = document.createElement("div");
+        card.className = "projCard";
+        card.innerHTML = `
+          <div class="projName">${name}</div>
+          <div class="projHint">Click to open</div>
+        `;
+        card.onclick = () => openProject(name);
+        grid.appendChild(card);
+      });
+    }
+
+    /* ===== Workspace ===== */
+    $("addFileBtn").onclick = addFile;
+    $("saveBtn").onclick = saveFile;
+    $("previewBtn").onclick = openPreview;
+    $("backBtn").onclick = () => { hide($("workspace")); show($("dashboard")); renderProjects(); };
+
+    function openProject(name){
+      currentProject = name;
+      currentFile = null;
+      hide($("dashboard"));
+      show($("workspace"));
+      renderFiles();
+      // if no files, ask to add one
+      if(Object.keys(projects[name]).length===0){ addFile(); }
+      ensureEditor();
+    }
+
+    function renderFiles(){
+      const list = $("filesList");
+      list.innerHTML = "";
+      const files = projects[currentProject] || {};
+      Object.keys(files).forEach(fname=>{
+        const div = document.createElement("div");
+        div.className = "fileItem" + (fname===currentFile ? " active": "");
+        div.textContent = fname;
+        div.onclick = () => openFile(fname);
+        list.appendChild(div);
+      });
+    }
+
+    function addFile(){
+      if(!currentProject) return alert("Open a project first.");
+      const fname = prompt("Enter file name, e.g. index.html");
+      if(!fname) return;
+      if(projects[currentProject][fname]) return alert("File already exists.");
+      projects[currentProject][fname] = "";
+      currentFile = fname;
+      saveProjects();
+      renderFiles();
+      openFile(fname); // auto open
+    }
+
+    function openFile(fname){
+      currentFile = fname;
+      renderFiles();
+      ensureEditor();
+      editor.setOption("mode", detectModeByName(fname));
+      editor.setValue(projects[currentProject][fname] || "");
+      editor.focus();
+    }
+
+    function saveFile(){
+      if(!currentProject || !currentFile){ alert("No file open."); return; }
+      projects[currentProject][currentFile] = editor.getValue();
+      saveProjects();
+      alert("Saved!");
+    }
+
+    /* ===== Editor (CodeMirror) ===== */
+    function ensureEditor(){
+      if(editor) return;
+      editor = CodeMirror($("editor"), {
+        value: "",
+        mode: "htmlmixed",
+        lineNumbers: true,
+        lineWrapping: false,
+        tabSize: 2,
+        indentUnit: 2,
+        autoCloseBrackets: true,
+        matchBrackets: true,
+        theme: "default"
+      });
+    }
+    function detectModeByName(name){
+      const lower = name.toLowerCase();
+      if(lower.endsWith(".js")) return "javascript";
+      if(lower.endsWith(".css")) return "css";
+      return "htmlmixed";
+    }
+
+    /* ===== Preview (sandbox with white fallback bg) ===== */
+    function openPreview(){
+      if(!currentProject || !currentFile){ alert("No file open."); return; }
+      let code = projects[currentProject][currentFile] || "";
+      if(!code.toLowerCase().includes("<html")){
+        code = `<!DOCTYPE html><html><head><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Preview</title><style>body{background:#fff;color:#111;margin:0;padding:16px;font-family:Arial}</style>
+        </head><body>${code}</body></html>`;
+      }
+      $("previewFrame").srcdoc = code;
+      show($("preview"));
+    }
+    $("closePreview").onclick = ()=>{ hide($("preview")); $("previewFrame").srcdoc=""; };
+  </script>
+</body>
+</html>
