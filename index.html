@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MoreHost</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: monospace;
+      background: black;
+      color: white;
+      overflow: hidden;
+    }
+    /* Loading Screen */
+    #loading {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex; justify-content: center; align-items: center;
+      background: black;
+      z-index: 9999;
+    }
+    #loading span {
+      font-size: 40px;
+      font-weight: bold;
+      display: inline-block;
+      animation: float 2s ease-in-out infinite;
+    }
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-15px); }
+      100% { transform: translateY(0px); }
+    }
+    /* Dashboard */
+    #dashboard {
+      display: none;
+      height: 100%;
+      background: linear-gradient(120deg, #0f0f0f, #1a1a40);
+      padding: 20px;
+    }
+    .new-project {
+      border: 2px solid #fff;
+      padding: 20px;
+      width: 200px;
+      text-align: center;
+      margin-bottom: 20px;
+      cursor: pointer;
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .new-project::before {
+      content: "";
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: linear-gradient(120deg, transparent, rgba(255,255,255,0.3), transparent);
+      transform: rotate(25deg);
+      animation: shine 2s infinite;
+    }
+    @keyframes shine {
+      0% { transform: translateX(-100%) rotate(25deg); }
+      100% { transform: translateX(100%) rotate(25deg); }
+    }
+    .projects { margin-top: 20px; }
+    /* Editor + Preview */
+    #editorArea {
+      display: none;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: #1e1e1e;
+      color: white;
+    }
+    #fileList {
+      background: #111;
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+    }
+    #fileList button {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+    #codeArea {
+      flex: 1;
+      display: flex;
+    }
+    textarea {
+      flex: 1;
+      background: #1e1e1e;
+      color: #eee;
+      border: none;
+      padding: 10px;
+      font-size: 14px;
+      font-family: monospace;
+      resize: none;
+    }
+    #controls {
+      padding: 10px;
+      background: #111;
+      display: flex;
+      gap: 10px;
+    }
+    #preview {
+      flex: 1;
+      border: none;
+      background: white;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading"></div>
+
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <div class="new-project" onclick="createProject()">+ New Project</div>
+    <div class="projects">
+      <h3>Saved Projects</h3>
+      <ul id="savedProjects"></ul>
+    </div>
+  </div>
+
+  <!-- Editor -->
+  <div id="editorArea">
+    <div id="fileList"></div>
+    <div id="controls">
+      <button onclick="addFile()">+ Add File</button>
+      <button onclick="saveFile()">💾 Save</button>
+      <button onclick="runPreview()">▶ Preview</button>
+    </div>
+    <div id="codeArea">
+      <textarea id="codeEditor" placeholder="Please Create a File To write code"></textarea>
+      <iframe id="preview"></iframe>
+    </div>
+  </div>
+
+<script>
+/* Loading Screen */
+const loading = document.getElementById("loading");
+const text = "MoreHost".split("");
+text.forEach((ch,i)=>{
+  const span=document.createElement("span");
+  span.innerText=ch;
+  span.style.animationDelay=`${i*0.2}s`;
+  loading.appendChild(span);
+});
+setTimeout(()=>{
+  loading.style.display="none";
+  document.getElementById("dashboard").style.display="block";
+},2000);
+
+/* Projects */
+let projects = JSON.parse(localStorage.getItem("projects")||"{}");
+let currentProject = null;
+let currentFile = null;
+
+function renderProjects(){
+  const list=document.getElementById("savedProjects");
+  list.innerHTML="";
+  Object.keys(projects).forEach(name=>{
+    const li=document.createElement("li");
+    li.textContent=name;
+    li.style.cursor="pointer";
+    li.onclick=()=>openProject(name);
+    list.appendChild(li);
+  });
+}
+renderProjects();
+
+function createProject(){
+  const name=prompt("Enter Project Name (no spaces):");
+  if(!name || name.includes(" ")) return alert("Invalid name!");
+  projects[name]={};
+  localStorage.setItem("projects",JSON.stringify(projects));
+  openProject(name);
+}
+
+function openProject(name){
+  currentProject=name;
+  document.getElementById("dashboard").style.display="none";
+  document.getElementById("editorArea").style.display="flex";
+  renderFiles();
+}
+
+function renderFiles(){
+  const fileList=document.getElementById("fileList");
+  fileList.innerHTML="";
+  const files=Object.keys(projects[currentProject]);
+  files.forEach(fname=>{
+    const btn=document.createElement("button");
+    btn.innerText=fname;
+    btn.onclick=()=>openFile(fname);
+    fileList.appendChild(btn);
+  });
+  if(files.length===0){
+    document.getElementById("codeEditor").value="";
+    document.getElementById("codeEditor").placeholder="Please Create a File To write code";
+  }
+}
+
+function addFile(){
+  const fname=prompt("Enter File Name:");
+  if(!fname) return;
+  projects[currentProject][fname]="";
+  localStorage.setItem("projects",JSON.stringify(projects));
+  renderFiles();
+  openFile(fname);
+}
+
+function openFile(fname){
+  currentFile=fname;
+  document.getElementById("codeEditor").value=projects[currentProject][fname]||"Start Your Coding from here";
+}
+
+function saveFile(){
+  if(!currentFile) return alert("No file open!");
+  projects[currentProject][currentFile]=document.getElementById("codeEditor").value;
+  localStorage.setItem("projects",JSON.stringify(projects));
+  alert("File saved!");
+}
+
+/* Preview System Upgrade */
+function runPreview(){
+  if(!currentFile) return alert("Create and open a file first!");
+  const code=document.getElementById("codeEditor").value;
+  const iframe=document.getElementById("preview");
+  const iframeDoc=iframe.contentDocument||iframe.contentWindow.document;
+
+  iframeDoc.open();
+  iframeDoc.write(`
+    <html>
+      <head>
+        <style>
+          body { margin:0; font-family:monospace; background:white; color:black; overflow:auto; }
+          pre { white-space:pre-wrap; word-wrap:break-word; }
+        </style>
+      </head>
+      <body>
+        <div id="output"></div>
+        <script>
+          try {
+            ${code}
+          } catch(e) {
+            document.body.innerHTML = "<pre style='color:red'>Error: " + e + "</pre>";
+          }
+        <\/script>
+      </body>
+    </html>
+  `);
+  iframeDoc.close();
+}
+</script>
+</body>
+</html>
