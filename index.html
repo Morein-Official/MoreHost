@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ultra Legend UI</title>
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #0d1b2a, #1b263b, #415a77, #e0e1dd);
+      background-size: 400% 400%;
+      animation: dayNight 20s infinite alternate;
+      color: white;
+      overflow: hidden;
+    }
+
+    @keyframes dayNight {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Loading screen */
+    #loading {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: black;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 9999;
+    }
+    .logo {
+      font-size: 3rem;
+      font-weight: bold;
+      color: cyan;
+      animation: float 2s infinite ease-in-out;
+      text-shadow: 0 0 10px cyan, 0 0 20px cyan;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    /* Auth screen */
+    #auth {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 9998;
+    }
+    #auth input {
+      padding: 12px;
+      margin: 10px;
+      border: 2px solid cyan;
+      border-radius: 8px;
+      background: transparent;
+      color: white;
+      font-size: 1rem;
+      width: 220px;
+      text-align: center;
+      outline: none;
+      transition: box-shadow 0.3s;
+    }
+    #auth input:focus {
+      box-shadow: 0 0 10px cyan;
+    }
+    #auth button {
+      padding: 10px 25px;
+      margin: 10px;
+      background: cyan;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      color: black;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    #auth button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 15px cyan;
+    }
+
+    /* Dashboard */
+    #dashboard {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+    #logoutBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 8px 15px;
+      background: red;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    #logoutBtn:hover {
+      background: darkred;
+    }
+    .project-box {
+      display: inline-block;
+      margin: 20px;
+      padding: 20px 40px;
+      border: 2px solid cyan;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.3s, box-shadow 0.3s;
+      background: rgba(0, 255, 255, 0.1);
+      backdrop-filter: blur(5px);
+    }
+    .project-box:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px cyan;
+    }
+
+    #savedProjects {
+      margin-top: 20px;
+    }
+    #savedProjects h2 {
+      font-size: 1.5rem;
+      margin-bottom: 15px;
+      color: cyan;
+    }
+    #savedProjects .project-box {
+      font-size: 1.2rem;
+      padding: 20px;
+      display: block;
+      margin: 10px auto;
+      width: 300px;
+    }
+
+    /* Workspace */
+    #workspace {
+      display: none;
+      height: 100vh;
+      flex-direction: row;
+      background: #1e1e1e;
+      color: white;
+    }
+    #sidebar {
+      width: 200px;
+      border-right: 2px solid #333;
+      padding: 10px;
+      background: #111;
+      display: none;
+    }
+    .file-btn {
+      display: block;
+      margin: 10px 0;
+      padding: 10px;
+      border: 2px solid cyan;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(0,255,255,0.1);
+      transition: 0.3s;
+    }
+    .file-btn:hover {
+      box-shadow: 0 0 10px cyan;
+      transform: scale(1.05);
+    }
+    #fileList {
+      margin-top: 20px;
+    }
+
+    #editorArea {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    #topbar {
+      display: none;
+      justify-content: flex-end;
+      padding: 10px;
+      background: #222;
+      border-bottom: 2px solid #333;
+    }
+    #topbar button {
+      margin-left: 10px;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 5px;
+      background: cyan;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    #topbar button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 10px cyan;
+    }
+
+    #codeEditor {
+      flex-grow: 1;
+      background: #1e1e1e;
+      border-left: 2px solid #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    #manncoEditor {
+      width: 100%;
+      height: 100%;
+      background: #1e1e1e;
+      color: #fff;
+      border: none;
+      outline: none;
+      padding: 15px;
+      font-family: monospace;
+      font-size: 15px;
+      resize: none;
+      display: none;
+    }
+
+    .empty-msg {
+      color: cyan;
+      text-align: center;
+      font-size: 1.2rem;
+      position: absolute;
+    }
+
+    /* Preview */
+    #previewArea {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: white;
+      z-index: 10000;
+    }
+    #previewArea iframe {
+      width: 100%; height: 100%;
+      border: none;
+    }
+    #closePreview {
+      position: absolute;
+      top: 10px; right: 10px;
+      background: red;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+    #closePreview:hover {
+      background: darkred;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading">
+    <div class="logo">MoreHost</div>
+    <div style="margin-top:10px;">Loading...</div>
+  </div>
+
+  <!-- Auth Screen -->
+  <div id="auth">
+    <h2 style="color:cyan;">Authentication</h2>
+    <input type="text" id="username" placeholder="Enter Name">
+    <input type="password" id="password" placeholder="Enter Password">
+    <div>
+      <button onclick="signUp()">Sign Up</button>
+      <button onclick="logIn()">Log In</button>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <button id="logoutBtn" onclick="logout()">Logout</button>
+    <div class="project-box" onclick="createProject()">+ New Project</div>
+    <div id="savedProjects">
+      <h2>Saved Projects</h2>
+    </div>
+  </div>
+
+  <!-- Workspace -->
+  <div id="workspace">
+    <div id="sidebar">
+      <div class="file-btn" onclick="addFile()">+ Add File</div>
+      <div id="fileList"></div>
+    </div>
+    <div id="editorArea">
+      <div id="topbar">
+        <button onclick="saveFile()">Save</button>
+        <button onclick="previewCode()">Preview</button>
+      </div>
+      <div id="codeEditor">
+        <textarea id="manncoEditor" placeholder="// Start coding here..."></textarea>
+        <div class="empty-msg" id="emptyMsg">Please create a file to write code</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div id="previewArea">
+    <button id="closePreview" onclick="closePreview()">X</button>
+    <iframe id="previewFrame"></iframe>
+  </div>
+
+  <script>
+    let currentFile = null;
+    let files = {};
+    let currentUser = localStorage.getItem("currentUser");
+    let savedProjects = {};
+
+    const editor = document.getElementById("manncoEditor");
+    const emptyMsg = document.getElementById("emptyMsg");
+
+    // ✅ Loading screen
+    window.onload = function() {
+      setTimeout(() => {
+        document.getElementById("loading").style.display = "none";
+        if (currentUser) {
+          loadUserProjects();
+          document.getElementById("auth").style.display = "none";
+          document.getElementById("dashboard").style.display = "block";
+        } else {
+          document.getElementById("auth").style.display = "flex";
+        }
+      }, 2000);
+    };
+
+    function signUp() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      if (!username || !password) {
+        alert("Enter both name and password!");
+        return;
+      }
+      currentUser = username + "_" + password;
+      localStorage.setItem("currentUser", currentUser);
+
+      if (!localStorage.getItem("projects_" + currentUser)) {
+        localStorage.setItem("projects_" + currentUser, JSON.stringify({}));
+      }
+
+      loadUserProjects();
+      document.getElementById("auth").style.display = "none";
+      document.getElementById("dashboard").style.display = "block";
+    }
+
+    function logIn() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const checkUser = username + "_" + password;
+
+      if (localStorage.getItem("projects_" + checkUser) !== null) {
+        currentUser = checkUser;
+        localStorage.setItem("currentUser", currentUser);
+        loadUserProjects();
+        document.getElementById("auth").style.display = "none";
+        document.getElementById("dashboard").style.display = "block";
+      } else {
+        alert("Invalid username or password!");
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem("currentUser");
+      currentUser = null;
+      savedProjects = {};
+      document.getElementById("dashboard").style.display = "none";
+      document.getElementById("workspace").style.display = "none";
+      document.getElementById("auth").style.display = "flex";
+    }
+
+    function loadUserProjects() {
+      savedProjects = JSON.parse(localStorage.getItem("projects_" + currentUser)) || {};
+      loadProjects();
+    }
+
+    function saveProjectsToLocal() {
+      localStorage.setItem("projects_" + currentUser, JSON.stringify(savedProjects));
+    }
+
+    function loadProjects() {
+      const savedDiv = document.getElementById("savedProjects");
+      savedDiv.innerHTML = "<h2>Saved Projects</h2>";
+      for (let name in savedProjects) {
+        const projectDiv = document.createElement("div");
+        projectDiv.textContent = name;
+        projectDiv.className = "project-box";
+        projectDiv.onclick = () => openProject(name);
+        savedDiv.appendChild(projectDiv);
+      }
+    }
+
+    function createProject() {
+      const projectName = prompt("Enter Project Name:");
+      if (!projectName) return;
+      savedProjects[projectName] = { files: {} };
+      saveProjectsToLocal();
+      loadProjects();
+      openProject(projectName);
+    }
+
+    function openProject(name) {
+      document.getElementById("dashboard").style.display = "none";
+      const workspace = document.getElementById("workspace");
+      workspace.style.display = "flex";
+      document.getElementById("sidebar").style.display = "block";
+      document.getElementById("topbar").style.display = "flex";
+
+      files = savedProjects[name].files;
+      currentFile = null;
+      document.getElementById("fileList").innerHTML = "";
+      emptyMsg.style.display = "block";
+      editor.style.display = "none";
+
+      for (let fileName in files) {
+        const fileBtn = document.createElement("div");
+        fileBtn.textContent = fileName;
+        fileBtn.className = "file-btn";
+        fileBtn.onclick = () => openFile(fileName);
+        document.getElementById("fileList").appendChild(fileBtn);
+      }
+    }
+
+    function addFile() {
+      const fileName = prompt("Enter file name (e.g. script.js):");
+      if (!fileName) return;
+      if (files[fileName]) {
+        alert("File already exists!");
+        return;
+      }
+      files[fileName] = "";
+      saveProjectsToLocal();
+
+      const fileBtn = document.createElement("div");
+      fileBtn.textContent = fileName;
+      fileBtn.className = "file-btn";
+      fileBtn.onclick = () => openFile(fileName);
+      document.getElementById("fileList").appendChild(fileBtn);
+      openFile(fileName);
+    }
+
+    function currentProject() {
+      return Object.keys(savedProjects).find(name => savedProjects[name].files === files);
+    }
+
+    function openFile(fileName) {
+      currentFile = fileName;
+      emptyMsg.style.display = "none";
+      editor.style.display = "block";
+      editor.value = files[fileName] || "";
+    }
+
+    function saveFile() {
+      if (currentFile) {
+        files[currentFile] = editor.value;
+        saveProjectsToLocal();
+        alert("File saved!");
+      }
+    }
+
+    function previewCode() {
+      if (!currentFile) {
+        alert("Please create a file first!");
+        return;
+      }
+      const code = editor.value;
+      const iframe = document.getElementById("previewFrame");
+      iframe.srcdoc = `<html><body>${code}</body></html>`;
+      document.getElementById("previewArea").style.display = "block";
+    }
+
+    function closePreview() {
+      document.getElementById("previewArea").style.display = "none";
+    }
+  </script>
+</body>
+</html>
