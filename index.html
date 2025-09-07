@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SkyNexaHost</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; font-family:'Poppins',sans-serif; background:#000; color:white; overflow:hidden; }
+    .blur-bg{position:fixed;top:-50%;left:-50%;width:200%;height:200%;
+      background:radial-gradient(circle at 30% 30%,rgba(0,255,255,0.2),transparent 60%),
+                 radial-gradient(circle at 70% 70%,rgba(255,255,255,0.15),transparent 60%);
+      filter:blur(80px);z-index:0;}
+    #loading{position:fixed;top:0;left:0;width:100%;height:100%;background:black;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:9999;}
+    .logo{font-size:3rem;font-weight:bold;color:cyan;animation:float 2s infinite ease-in-out;text-shadow:0 0 10px cyan,0 0 20px cyan;}
+    @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-15px);}}
+    #auth{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:9998;}
+    #auth input,#auth button{margin:10px;padding:12px;border-radius:8px;border:2px solid cyan;}
+    button{transition:0.2s;cursor:pointer;}
+    button:hover{transform:scale(1.05);box-shadow:0 0 10px cyan;}
+    button:active{transform:scale(0.95);}
+    #dashboard{display:none;text-align:center;padding:20px;position:relative;}
+    #logoutBtn{position:absolute;top:10px;right:10px;padding:8px 15px;background:red;color:white;border:none;border-radius:5px;font-weight:bold;cursor:pointer;}
+    .project-box{display:inline-block;margin:20px;padding:20px 40px;border:2px solid cyan;border-radius:12px;cursor:pointer;background:rgba(0,255,255,0.1);transition:0.2s;}
+    .project-box:hover{transform:scale(1.05);box-shadow:0 0 12px cyan;}
+    #workspace{display:none;height:100vh;flex-direction:row;background:#000;color:white;position:relative;}
+    #sidebar{width:200px;background:#111;padding:10px;z-index:2;}
+    #editorArea{flex-grow:1;display:flex;flex-direction:column;position:relative;z-index:1;}
+    #topbar{display:none;justify-content:space-between;align-items:center;padding:10px;background:#222;}
+    #topbar button{margin-left:10px;padding:8px 15px;border:none;border-radius:5px;background:cyan;color:black;}
+    .file-btn{display:block;margin:5px 0;padding:10px;border-radius:8px;border:2px solid cyan;background:rgba(0,255,255,0.05);color:white;font-weight:bold;cursor:pointer;transition:0.2s;}
+    .file-btn:hover{transform:scale(1.03);box-shadow:0 0 10px cyan;}
+    .shine{background:linear-gradient(110deg,#111 40%,rgba(255,255,255,0.6) 50%,#111 60%);background-size:200% 100%;animation:shineMove 3s linear infinite;}
+    @keyframes shineMove{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+    #codeEditor{flex-grow:1;background:#000;position:relative;display:none;}
+    .empty-msg{color:cyan;text-align:center;font-size:1.3rem;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+    #previewArea{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:white;z-index:10000;}
+    #previewArea iframe{width:100%;height:100%;border:none;}
+    /* Ready Codes Button */
+    .ready-btn{
+      margin-top:50px;
+      padding:12px 20px;
+      border:none;
+      border-radius:8px;
+      background:cyan;
+      color:black;
+      font-weight:bold;
+      cursor:pointer;
+      transition:0.3s;
+    }
+    .ready-btn:hover{
+      transform:scale(1.1);
+      box-shadow:0 0 15px cyan, 0 0 30px cyan;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ace.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ext-language_tools.min.js"></script>
+</head>
+<body>
+  <div class="blur-bg"></div>
+  <div id="loading"><div class="logo">SkyNexaHost</div><div>Loading...</div></div>
+  <div id="auth">
+    <h2 style="color:cyan;">Authentication</h2>
+    <input type="text" id="username" placeholder="Enter Name">
+    <input type="password" id="password" placeholder="Enter Password">
+    <div><button onclick="signUp()">Sign Up</button><button onclick="logIn()">Log In</button></div>
+  </div>
+  <div id="dashboard">
+    <button id="logoutBtn" onclick="logout()">Logout</button>
+    <button class="ready-btn" onclick="window.open('readycodes.html','_blank')">Ready Codes for your web</button>
+    <div class="project-box" onclick="createProject()">+ New Project</div>
+    <div id="savedProjects"><h2>Saved Projects</h2></div>
+  </div>
+  <div id="workspace">
+    <div id="sidebar">
+      <div class="file-btn shine" onclick="addFile()">+ Add File</div>
+      <div id="fileList"></div>
+    </div>
+    <div id="editorArea">
+      <div id="topbar">
+        <button id="menuBtn" onclick="toggleSidebar()">☰</button>
+        <div>
+          <button onclick="saveFile()">Save</button>
+          <button onclick="previewCode()">Preview</button>
+        </div>
+      </div>
+      <div id="codeEditor"></div>
+      <div class="empty-msg" id="emptyMsg">Please Create a File</div>
+    </div>
+  </div>
+  <div id="previewArea"><button onclick="closePreview()">X</button><iframe id="previewFrame"></iframe></div>
+
+<script>
+let editor,currentFile=null,files={},currentUser=localStorage.getItem("currentUser"),savedProjects={},currentProject=null;
+window.onload=function(){setTimeout(()=>{document.getElementById("loading").style.display="none";
+  if(currentUser){loadUserProjects();document.getElementById("auth").style.display="none";document.getElementById("dashboard").style.display="block";}
+  else document.getElementById("auth").style.display="flex";
+  editor=ace.edit("codeEditor");editor.setTheme("ace/theme/monokai");editor.session.setMode("ace/mode/javascript");
+  editor.setOptions({enableBasicAutocompletion:true,enableLiveAutocompletion:true,enableSnippets:true});editor.setValue("");
+},2000);};
+// Auth
+function signUp(){const u=document.getElementById("username").value.trim(),p=document.getElementById("password").value.trim();if(!u||!p)return alert("Enter both!");
+  currentUser=u+"_"+p;localStorage.setItem("currentUser",currentUser);if(!localStorage.getItem("projects_"+currentUser))localStorage.setItem("projects_"+currentUser,JSON.stringify({}));
+  loadUserProjects();document.getElementById("auth").style.display="none";document.getElementById("dashboard").style.display="block";}
+function logIn(){const u=document.getElementById("username").value.trim(),p=document.getElementById("password").value.trim(),checkUser=u+"_"+p;
+  if(localStorage.getItem("projects_"+checkUser)!==null){currentUser=checkUser;localStorage.setItem("currentUser",currentUser);
+    loadUserProjects();document.getElementById("auth").style.display="none";document.getElementById("dashboard").style.display="block";}else alert("Invalid!");}
+function logout(){localStorage.removeItem("currentUser");currentUser=null;savedProjects={};document.getElementById("dashboard").style.display="none";
+  document.getElementById("workspace").style.display="none";document.getElementById("auth").style.display="flex";}
+// Projects
+function loadUserProjects(){savedProjects=JSON.parse(localStorage.getItem("projects_"+currentUser))||{};loadProjects();}
+function saveProjectsToLocal(){localStorage.setItem("projects_"+currentUser,JSON.stringify(savedProjects));}
+function loadProjects(){const s=document.getElementById("savedProjects");s.innerHTML="<h2>Saved Projects</h2>";
+  for(let n in savedProjects){const d=document.createElement("div");d.textContent=n;d.className="project-box";d.onclick=()=>openProject(n);s.appendChild(d);}}
+function createProject(){const n=prompt("Enter Project Name:");if(!n)return;savedProjects[n]={files:{}};saveProjectsToLocal();loadProjects();openProject(n);}
+function openProject(name){currentProject=name;files=savedProjects[name].files;currentFile=null;document.getElementById("dashboard").style.display="none";
+  document.getElementById("workspace").style.display="flex";document.getElementById("topbar").style.display="flex";renderFileList();document.getElementById("emptyMsg").style.display="block";editor.setValue("");}
+// Files
+function addFile(){
+  if(!currentProject)return alert("No project open!");
+  const f=prompt("Enter File Name (e.g. index.html, style.css, script.js):");
+  if(!f)return;
+  if(!(/\.(html|css|js)$/i).test(f)) return alert("Invalid file name! Use .html, .css, or .js only.");
+  if(files[f])return alert("File exists!");
+  files[f]="// Start your coding here\n";savedProjects[currentProject].files=files;saveProjectsToLocal();renderFileList();openFile(f);
+}
+function renderFileList(){const fileList=document.getElementById("fileList");fileList.innerHTML="";
+  for(let fname in files){const wrapper=document.createElement("div");wrapper.style.display="flex";wrapper.style.justifyContent="space-between";
+    const b=document.createElement("div");b.textContent=fname;b.className="file-btn";b.style.flexGrow="1";b.onclick=()=>openFile(fname);
+    const del=document.createElement("button");del.textContent="❌";del.style.cursor="pointer";del.onclick=(e)=>{e.stopPropagation();deleteFile(fname);};
+    wrapper.appendChild(b);wrapper.appendChild(del);fileList.appendChild(wrapper);}}
+function deleteFile(name){if(!confirm(`Delete "${name}"?`))return;delete files[name];savedProjects[currentProject].files=files;saveProjectsToLocal();renderFileList();
+  if(currentFile===name){currentFile=null;editor.setValue("");document.getElementById("emptyMsg").style.display="block";document.getElementById("codeEditor").style.display="none";}}
+function openFile(f){currentFile=f;document.getElementById("emptyMsg").style.display="none";document.getElementById("codeEditor").style.display="block";editor.setValue(files[f]||"", -1);}
+function saveFile(){if(currentFile&&editor){files[currentFile]=editor.getValue();savedProjects[currentProject].files=files;saveProjectsToLocal();alert("Saved!");}}
+// Preview (Combine all project files)
+function previewCode(){
+  if(!files["index.html"]) return alert("You need an index.html file to preview the project!");
+  let html=files["index.html"]||"";
+  for(let fname in files){
+    if(fname.endsWith(".css")){
+      html=html.replace("</head>",`<link rel="stylesheet" href="${fname}"></head>`);
+    }
+    if(fname.endsWith(".js")){
+      html=html.replace("</body>",`<script>${files[fname]}</script></body>`);
+    }
+  }
+  document.getElementById("previewFrame").srcdoc=html;
+  document.getElementById("previewArea").style.display="block";
+}
+function closePreview(){document.getElementById("previewArea").style.display="none";}
+// Mobile Sidebar toggle
+function toggleSidebar(){document.getElementById("sidebar").classList.toggle("active");}
+</script>
+</body>
+</html>
