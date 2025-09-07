@@ -1,0 +1,28 @@
+<script>
+let editor,currentFile=null,files={},currentUser=localStorage.getItem("currentUser"),savedProjects={},currentProject=null;
+
+// Fix: use DOMContentLoaded instead of window.onload
+document.addEventListener("DOMContentLoaded", function(){
+  setTimeout(()=>{
+    document.getElementById("loading").style.display="none";
+
+    if(currentUser){
+      loadUserProjects();
+      document.getElementById("auth").style.display="none";
+      document.getElementById("dashboard").style.display="block";
+    } else {
+      document.getElementById("auth").style.display="flex";
+    }
+
+    editor=ace.edit("codeEditor");
+    editor.setTheme("ace/theme/monokai");
+    editor.session.setMode("ace/mode/javascript");
+    editor.setOptions({
+      enableBasicAutocompletion:true,
+      enableLiveAutocompletion:true,
+      enableSnippets:true
+    });
+    editor.setValue("");
+  },3000); // Always 3 sec later
+});
+</script>
