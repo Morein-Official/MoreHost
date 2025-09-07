@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkyNexaHost</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body{margin:0;font-family:'Poppins',sans-serif;background:#0a0a0a;color:white;}
+
+    /* Workspace */
+    #workspace{height:100vh;display:none;}
+    #sidebar{width:200px;background:rgba(255,255,255,0.05);padding:10px;}
+    #fileList{list-style:none;margin-top:10px;}
+    #fileList li{padding:6px;cursor:pointer;border-radius:6px;}
+    #fileList li:hover{background:rgba(255,255,255,0.1);}
+    #editorArea{flex:1;display:flex;flex-direction:column;}
+    #editor{flex:1;display:none;} /* hidden until file added */
+    #noFileMsg{flex:1;display:flex;align-items:center;justify-content:center;
+      color:gray;font-size:18px;font-style:italic;}
+    #editorArea button{margin:5px;}
+
+    /* Preview */
+    #previewArea{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;display:none;z-index:1500;}
+    #previewFrame{width:100%;height:100%;border:none;}
+    #closePreviewBtn{position:absolute;top:10px;right:10px;}
+  </style>
+</head>
+<body>
+
+  <!-- Workspace -->
+  <div id="workspace">
+    <div id="sidebar">
+      <button id="addFileBtn">+ Add File</button>
+      <ul id="fileList"></ul>
+    </div>
+    <div id="editorArea">
+      <div style="display:flex;justify-content:space-between;">
+        <button id="saveBtn">Save</button>
+        <button id="previewBtn">Preview</button>
+      </div>
+      <div id="noFileMsg">Please add a file</div>
+      <div id="editor" style="width:100%;height:100%;"></div>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div id="previewArea">
+    <iframe id="previewFrame"></iframe>
+    <button id="closePreviewBtn">Close</button>
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.0/ace.js"></script>
+<script>
+  let currentProject="demo";  // For testing we use one project
+  let currentFile=null;
+  let projects={demo:{}};     // Store files & code
+  let editor=ace.edit("editor");
+  editor.setTheme("ace/theme/monokai");
+  editor.session.setMode("ace/mode/html");
+  editor.setValue("");
+
+  // Add File
+  document.getElementById("addFileBtn").onclick=function(){
+    let fname=prompt("File name? (index.html/style.css/script.js)");
+    if(!fname) return;
+    if(!fname.endsWith(".html") && !fname.endsWith(".css") && !fname.endsWith(".js")){
+      alert("Only .html, .css, .js allowed");return;
+    }
+    if(projects[currentProject][fname]){
+      alert("File already exists");return;
+    }
+    projects[currentProject][fname]="";
+    let li=document.createElement("li");
+    li.textContent=fname;
+    li.onclick=()=>openFile(fname);
+    document.getElementById("fileList").appendChild(li);
+    openFile(fname);
+  };
+
+  // Open File
+  function openFile(fname){
+    currentFile=fname;
+    document.getElementById("noFileMsg").style.display="none";
+    document.getElementById("editor").style.display="block";
+    editor.setValue(projects[currentProject][fname]||"", -1);
+    if(fname.endsWith(".css")) editor.session.setMode("ace/mode/css");
+    else if(fname.endsWith(".js")) editor.session.setMode("ace/mode/javascript");
+    else editor.session.setMode("ace/mode/html");
+  }
+
+  // Save File
+  document.getElementById("saveBtn").onclick=function(){
+    if(!currentFile){alert("Please add file first");return;}
+    projects[currentProject][currentFile]=editor.getValue();
+    alert("File saved");
+  };
+
+  // Preview Project
+  document.getElementById("previewBtn").onclick=function(){
+    if(!projects[currentProject]["index.html"]){
+      alert("index.html required for preview");return;
+    }
+    let html=projects[currentProject]["index.html"];
+    if(projects[currentProject]["style.css"]) html+="<style>"+projects[currentProject]["style.css"]+"</style>";
+    if(projects[currentProject]["script.js"]) html+="<script>"+projects[currentProject]["script.js"]+"<\/script>";
+    document.getElementById("previewFrame").srcdoc=html;
+    document.getElementById("previewArea").style.display="block";
+  };
+
+  // Close Preview
+  document.getElementById("closePreviewBtn").onclick=function(){
+    document.getElementById("previewArea").style.display="none";
+  };
+</script>
+</body>
+</html>
