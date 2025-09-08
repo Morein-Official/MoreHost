@@ -1,48 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>SkyNexaHost Dev Break</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-  <style>
-    body{margin:0;font-family:'Poppins',sans-serif;background:#0a0a0a;color:white;text-align:center;}
-    h1{margin:20px;font-size:32px;background:linear-gradient(90deg,red,orange,yellow,green,cyan,blue,violet);
-        -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-    .game-list{display:flex;flex-wrap:wrap;justify-content:center;gap:20px;margin-top:30px;}
-    .game-box{background:rgba(255,255,255,0.05);padding:20px;border-radius:12px;width:250px;cursor:pointer;transition:0.3s;}
-    .game-box:hover{transform:scale(1.08);background:rgba(255,255,255,0.1);}
-    .game-area{display:none;flex-direction:column;align-items:center;margin-top:20px;}
-    canvas{background:#111;display:block;margin:10px auto;border:2px solid #555;}
-    .controls{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:10px;}
-    .controls button{background:#222;color:white;border:1px solid #666;padding:10px 15px;border-radius:8px;}
-  </style>
-</head>
-<body>
-  <h1>🎮 SkyNexaHost Dev Break 🎮</h1>
-  <p>Take a break, click a game to play 🚀</p>
-
-  <!-- Game selection -->
-  <div class="game-list">
-    <div class="game-box" onclick="startGame('snake')"><h3>🐍 Snake Game</h3></div>
-    <div class="game-box" onclick="startGame('tic')"><h3>⭕ Tic Tac Toe ❌</h3></div>
-    <div class="game-box" onclick="startGame('flappy')"><h3>🐦 Flappy Bird</h3></div>
-  </div>
-
-  <!-- Game Area -->
-  <div id="gameArea" class="game-area">
-    <h2 id="gameTitle"></h2>
-    <canvas id="gameCanvas" width="300" height="300"></canvas>
-    <div class="controls" id="mobileControls">
-      <button onclick="setDir('UP')">⬆️</button><br>
-      <button onclick="setDir('LEFT')">⬅️</button>
-      <button onclick="setDir('DOWN')">⬇️</button>
-      <button onclick="setDir('RIGHT')">➡️</button>
-    </div>
-    <button onclick="backToMenu()">⬅ Back to Menu</button>
-  </div>
-
 <script>
 let currentGame=null,ctx,canvas=document.getElementById("gameCanvas");
+let loop;
 
 // ========== MENU ==========
 function startGame(game){
@@ -60,7 +18,6 @@ function backToMenu(){
   document.getElementById("gameArea").style.display="none";
   document.querySelector(".game-list").style.display="flex";
 }
-let loop;
 
 // ========== SNAKE ==========
 let snake,dir,food;
@@ -69,7 +26,7 @@ function initSnake(){
   dir=null;
   food={x:Math.floor(Math.random()*30)*10,y:Math.floor(Math.random()*30)*10};
   clearInterval(loop);
-  loop=setInterval(updateSnake,100);
+  loop=setInterval(updateSnake,200); // ⬅ slow speed (100 → 200)
 }
 function updateSnake(){
   ctx.fillStyle="black";ctx.fillRect(0,0,300,300);
@@ -112,24 +69,29 @@ function updateTic(){
 }
 
 // ========== FLAPPY ==========
-let birdY,vel,pipes;
+let birdY,vel,pipes,birdX;
 function initFlappy(){
-  birdY=150;vel=0;pipes=[{x:300,y:Math.random()*150+50}];
+  birdX=50;birdY=150;vel=0;pipes=[{x:300,y:Math.random()*150+50}];
   clearInterval(loop);
   loop=setInterval(updateFlappy,50);
-  document.onkeydown=()=>vel=-8;
+  document.onkeydown=e=>{ if(e.code==="Space"){ flap(); } };
+}
+function flap(){
+  vel=-8;
+  birdX=Math.max(0,birdX-5); // ⬅ ছোট্ট Left move
 }
 function updateFlappy(){
   ctx.fillStyle="#222";ctx.fillRect(0,0,300,300);
-  vel+=0.5;birdY+=vel;ctx.fillStyle="yellow";ctx.fillRect(50,birdY,20,20);
+  vel+=0.5;birdY+=vel;
+  ctx.fillStyle="yellow";ctx.fillRect(birdX,birdY,20,20);
   for(let i=0;i<pipes.length;i++){
     ctx.fillStyle="green";
     ctx.fillRect(pipes[i].x,0,30,pipes[i].y);
     ctx.fillRect(pipes[i].x,pipes[i].y+60,30,300);
     pipes[i].x-=2;
     if(pipes[i].x===150)pipes.push({x:300,y:Math.random()*150+50});
-    if(50<pipes[i].x+30&&50+20>pipes[i].x&&
-       (birdY< pipes[i].y||birdY+20>pipes[i].y+60)){
+    if(birdX<pipes[i].x+30&&birdX+20>pipes[i].x&&
+       (birdY<pipes[i].y||birdY+20>pipes[i].y+60)){
       alert("Game Over!");initFlappy();
     }
   }
@@ -145,9 +107,9 @@ document.addEventListener("keydown",e=>{
     if((e.key==="w"||e.key==="ArrowUp")&&dir!=="DOWN")dir="UP";
     if((e.key==="s"||e.key==="ArrowDown")&&dir!=="UP")dir="DOWN";
   }
+  if(currentGame==="flappy" && e.code==="Space"){ flap(); }
 });
 </script>
-</body>
-</html>
+
 
 
