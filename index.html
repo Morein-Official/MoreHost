@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkyNexaHost</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --brand:#00ffea;
+      --bg:#0a0a0a;
+      --glass:rgba(255,255,255,0.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Poppins',sans-serif;background:var(--bg);color:#fff}
+
+    /* ===== LOADING ===== */
+    #loadingScreen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2000;background:linear-gradient(135deg,#1e3c72,#2a5298)}
+    .loading-logo{font-size:44px;font-weight:700;letter-spacing:.5px;background:linear-gradient(90deg,red,orange,yellow,green,cyan,blue,violet);-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:glow 2s ease-in-out infinite alternate}
+    @keyframes glow{from{text-shadow:0 0 6px #fff}to{text-shadow:0 0 24px #fff,0 0 48px #0ff}}
+    .loading-bar{width:240px;height:10px;border-radius:999px;background:rgba(255,255,255,0.2);overflow:hidden;margin-top:18px}
+    .loading-fill{height:100%;width:0;background:linear-gradient(90deg,#00ffea,#00aaff);animation:fill 4s forwards}
+    @keyframes fill{to{width:100%}}
+
+    /* ===== BUTTONS ===== */
+    button{background:#111;border:2px solid var(--brand);color:var(--brand);padding:10px 20px;border-radius:12px;cursor:pointer;transition:transform .25s ease, box-shadow .25s ease, filter .25s ease}
+    button:hover{transform:translateY(-2px) scale(1.06);box-shadow:0 8px 24px rgba(0,0,0,.4),0 0 18px rgba(0,255,234,.35);filter:saturate(1.2)}
+    .rainbow:hover{background:linear-gradient(90deg,red,orange,yellow,green,cyan,blue,violet);color:#111;border-color:transparent}
+
+    /* ===== SCREENS ===== */
+    #auth,#dashboard,#workspace,#previewArea{display:none}
+
+    /* ===== AUTH ===== */
+    #auth{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(60% 60% at 50% 20%, rgba(0,255,234,.15), transparent 70%), radial-gradient(40% 40% at 10% 90%, rgba(0,140,255,.18), transparent 70%)}
+    #authCard{background:var(--glass);backdrop-filter:blur(10px);padding:28px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.45);width:min(520px,92vw)}
+    #authCard h2{margin:0 0 12px;color:var(--brand)}
+    .field{display:flex;gap:10px;margin:10px 0}
+    .field input{flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f0f10;color:#fff}
+    .uploader{display:flex;align-items:center;gap:12px;background:#0f0f10;border:1px dashed rgba(255,255,255,.18);padding:10px;border-radius:12px}
+    .avatar-preview{width:56px;height:56px;border-radius:50%;background:#1b1b1b;display:grid;place-items:center;overflow:hidden;border:2px solid rgba(255,255,255,.1)}
+    .avatar-preview img{width:100%;height:100%;object-fit:cover}
+    .auth-actions{display:flex;gap:10px;justify-content:space-between;margin-top:12px}
+    .auth-actions button{flex:1}
+
+    /* ===== DASHBOARD ===== */
+    #dashboard{padding:22px 16px 28px;position:relative}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{font-weight:700;font-size:20px;letter-spacing:.3px}
+    .top-right{display:flex;align-items:center;gap:10px}
+    #logoutBtn{font-size:12px;padding:6px 12px;border-radius:10px}
+
+    .profile-chip{display:flex;align-items:center;gap:10px;background:var(--glass);padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);cursor:pointer;transition:all .25s}
+    .profile-chip:hover{box-shadow:0 8px 24px rgba(0,0,0,.35)}
+    .chip-avatar{width:36px;height:36px;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,.12);flex:0 0 auto}
+    .chip-avatar img{width:100%;height:100%;object-fit:cover}
+    .chip-name{font-weight:600}
+
+    .dash-main{max-width:980px;margin:28px auto 0;text-align:center}
+    #newProjectBtn{margin:18px auto 10px;display:block}
+    #projects{margin-top:20px;display:flex;flex-wrap:wrap;justify-content:center;gap:18px}
+    .project-box{background:var(--glass);padding:18px;border-radius:14px;width:220px;cursor:pointer;transition:.25s;border:1px solid rgba(255,255,255,.12);text-align:left}
+    .project-box:hover{transform:translateY(-4px) scale(1.04);background:rgba(255,255,255,.09)}
+
+    /* ===== WORKSPACE ===== */
+    #workspace{height:100vh;display:flex}
+    #sidebar{width:260px;background:var(--glass);padding:12px;border-right:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:10px}
+    #friendList{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px;max-height:180px;overflow:auto}
+    #friendList h4{margin:0 0 8px;color:var(--brand);font-size:14px}
+    .friend-item{display:flex;align-items:center;gap:8px;padding:6px;border-radius:10px}
+    .friend-item img{width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,.15);object-fit:cover}
+
+    #fileList{list-style:none;margin:0;padding:0}
+    #fileList li{padding:8px 10px;border-radius:10px;cursor:pointer;transition:.2s}
+    #fileList li:hover{background:rgba(255,255,255,.08)}
+    #editorArea{flex:1;display:flex;flex-direction:column}
+    #editorToolbar{display:flex;gap:8px;justify-content:flex-end;padding:10px;border-bottom:1px solid rgba(255,255,255,.08);background:linear-gradient( to right, rgba(0,255,234,.07), transparent)}
+    #editor{flex:1;display:none}
+    #noFileMsg{flex:1;display:flex;align-items:center;justify-content:center;color:#bdbdbd;font-size:18px;font-style:italic}
+
+    /* ===== PREVIEW ===== */
+    #previewArea{position:fixed;inset:0;background:#000;display:none;z-index:1500}
+    #previewFrame{width:100%;height:100%;border:none}
+    #closePreviewBtn{position:absolute;top:12px;right:12px}
+
+    /* ===== MODALS ===== */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:1600}
+    .modal-card{width:min(560px,92vw);background:#0f0f10;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:18px}
+    .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}
+    .row{display:flex;gap:10px}
+    .row .field{flex:1}
+    textarea{width:100%;min-height:90px;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0f0f10;color:#fff;resize:vertical}
+
+    /* inbox list */
+    .req-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--glass);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px;margin-top:8px}
+    .req-left{display:flex;align-items:center;gap:10px}
+    .req-left img{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.15);object-fit:cover}
+    .badge{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.15);opacity:.8}
+  </style>
+</head>
+<body>
+
+  <!-- LOADING -->
+  <div id="loadingScreen">
+    <div class="loading-logo">SkyNexaHost</div>
+    <div class="loading-bar"><div class="loading-fill"></div></div>
+  </div>
+
+  <!-- AUTH -->
+  <div id="auth">
+    <div id="authCard">
+      <h2>Welcome to SkyNexaHost</h2>
+      <div class="field"><input type="text" id="username" placeholder="Username (required)"></div>
+      <div class="field"><input type="password" id="password" placeholder="Password (required)"></div>
+
+      <!-- Profile pic on auth (with default fallback) -->
+      <div class="uploader">
+        <div class="avatar-preview" id="authAvatarPreview"><span style="font-size:12px;color:#aaa">Avatar</span></div>
+        <div style="text-align:left">
+          <div style="font-size:13px;opacity:.9">Choose a profile picture (optional)</div>
+          <input type="file" id="profilePicInput" accept="image/*">
+        </div>
+      </div>
+
+      <div class="auth-actions">
+        <button id="signUpBtn" class="rainbow">Sign Up</button>
+        <button id="logInBtn">Log In</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard">
+    <div class="topbar">
+      <div class="brand">⚡ SkyNexaHost Dashboard</div>
+      <div class="top-right">
+        <button id="searchUsersBtn" title="Search Users">Search Users</button>
+        <button id="inboxBtn" title="Friend Requests">Inbox</button>
+        <div class="profile-chip" id="openProfile" title="Open Profile">
+          <div class="chip-avatar"><img id="chipAvatar" alt="avatar"></div>
+          <div class="chip-name" id="chipName">User</div>
+        </div>
+        <button id="logoutBtn" title="Logout">Logout</button>
+      </div>
+    </div>
+
+    <div class="dash-main">
+      <button id="newProjectBtn" class="rainbow">+ New Project</button>
+      <div id="projects"></div>
+    </div>
+  </div>
+
+  <!-- WORKSPACE -->
+  <div id="workspace">
+    <div id="sidebar">
+      <!-- Friends list top-left -->
+      <div id="friendList">
+        <h4>Friends</h4>
+        <div id="friendItems" style="font-size:13px;opacity:.8">No friends yet</div>
+      </div>
+
+      <button id="addFileBtn" class="rainbow">+ Add File</button>
+      <ul id="fileList"></ul>
+    </div>
+    <div id="editorArea">
+      <div id="editorToolbar">
+        <button id="saveBtn">Save</button>
+        <button id="previewBtn" class="rainbow">Preview</button>
+      </div>
+      <div id="noFileMsg">Please add a file (e.g., <b>index.html</b>)</div>
+      <div id="editor" style="width:100%;height:100%"></div>
+    </div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div id="previewArea">
+    <iframe id="previewFrame"></iframe>
+    <button id="closePreviewBtn">Close</button>
+  </div>
+
+  <!-- PROFILE MODAL -->
+  <div class="modal" id="profileModal">
+    <div class="modal-card">
+      <h3 style="margin:0 0 10px;color:var(--brand)">Profile</h3>
+      <div class="row">
+        <div class="field">
+          <label style="font-size:13px;opacity:.8">Display Name</label>
+          <input id="profileName" type="text" placeholder="Your name">
+        </div>
+        <div class="field">
+          <label style="font-size:13px;opacity:.8">Change Avatar</label>
+          <input id="profileAvatar" type="file" accept="image/*">
+        </div>
+      </div>
+      <div style="margin-top:8px">
+        <label style="font-size:13px;opacity:.8">Description</label>
+        <textarea id="profileDesc" placeholder="About you..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button id="closeProfile">Cancel</button>
+        <button id="saveProfile" class="rainbow">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEARCH USERS MODAL -->
+  <div class="modal" id="searchModal">
+    <div class="modal-card">
+      <h3 style="margin:0 0 10px;color:var(--brand)">Search Users</h3>
+      <input type="text" id="searchInput" placeholder="Enter username..." 
+             style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0f0f10;color:#fff">
+      <div id="searchResult" style="margin-top:15px;min-height:60px"></div>
+      <div class="modal-actions">
+        <button id="closeSearch">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INBOX MODAL -->
+  <div class="modal" id="inboxModal">
+    <div class="modal-card">
+      <h3 style="margin:0 0 10px;color:var(--brand)">Inbox — Friend Requests</h3>
+      <div id="inboxList" style="min-height:60px"></div>
+      <div class="modal-actions">
+        <button id="closeInbox">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.0/ace.js"></script>
+  <script>
+    // ===== State =====
+    let currentUser=null,currentProject=null,currentFile=null; 
+    const editor=ace.edit('editor');
+    editor.setTheme('ace/theme/monokai');
+    editor.setValue('');
+
+    // ===== Helpers =====
+    function getUserKey(u){return 'user_'+u}
+    function readUser(u){return JSON.parse(localStorage.getItem(getUserKey(u))||'null')}
+    function writeUser(u,data){localStorage.setItem(getUserKey(u),JSON.stringify(data))}
+
+    // Create a default avatar (initials) as dataURL
+    function makeDefaultAvatar(name='User'){
+      const parts=name.trim().split(/\s+/).filter(Boolean);
+      const initials=(parts[0]?.[0]||'U') + (parts[1]?.[0]||'');
+      const cvs=document.createElement('canvas');cvs.width=256;cvs.height=256;const ctx=cvs.getContext('2d');
+      const g=ctx.createLinearGradient(0,0,256,256);g.addColorStop(0,'#06beb6');g.addColorStop(1,'#48b1bf');
+      ctx.fillStyle=g;ctx.fillRect(0,0,256,256);
+      ctx.fillStyle='#fff';ctx.font='bold 120px Poppins, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.shadowColor='rgba(0,0,0,.25)';ctx.shadowBlur=12;ctx.fillText(initials.toUpperCase(),128,136);
+      return cvs.toDataURL('image/png');
+    }
+
+    function ensureSocial(data){
+      data.social = data.social || {friends:[],requests:{incoming:[],outgoing:[]}};
+      data.social.friends ||= [];
+      data.social.requests ||= {incoming:[],outgoing:[]};
+      data.social.requests.incoming ||= [];
+      data.social.requests.outgoing ||= [];
+      return data;
+    }
+
+    function setChipProfile(uData){
+      const name=uData.profile?.name || currentUser;
+      const avatar=uData.profile?.avatar || makeDefaultAvatar(name);
+      document.getElementById('chipName').textContent=name;
+      document.getElementById('chipAvatar').src=avatar;
+    }
+
+    function renderFriendList(){
+      const panel=document.getElementById('friendItems');
+      const uData=ensureSocial(readUser(currentUser));
+      const friends=uData.social.friends||[];
+      if(!friends.length){panel.innerHTML='No friends yet';return;}
+      panel.innerHTML='';
+      friends.forEach(un=>{
+        const friend=readUser(un);
+        const name=friend?.profile?.name||un;
+        const avatar=friend?.profile?.avatar||makeDefaultAvatar(name);
+        const row=document.createElement('div');
+        row.className='friend-item';
+        row.innerHTML=`
+          <img src="${avatar}" alt="">
+          <div>
+            <div style="font-weight:600;font-size:13px">${name}</div>
+            <div style="opacity:.75;font-size:11px">@${un}</div>
+          </div>`;
+        panel.appendChild(row);
+      });
+    }
+
+    // ===== Loading Flow =====
+    window.onload=()=>{
+      setTimeout(()=>{
+        document.getElementById('loadingScreen').style.display='none';
+        const u=localStorage.getItem('loggedIn');
+        if(u){
+          currentUser=u;showDashboard();
+        }else{
+          document.getElementById('auth').style.display='flex';
+        }
+      },4000);
+    }
+
+    // ===== Auth =====
+    const picInput=document.getElementById('profilePicInput');
+    const authAvatarPreview=document.getElementById('authAvatarPreview');
+    let tempAuthAvatar=null; 
+
+    picInput?.addEventListener('change',()=>{
+      const f=picInput.files?.[0];
+      if(!f) return;
+      const reader=new FileReader();
+      reader.onload=e=>{
+        tempAuthAvatar=e.target.result;
+        authAvatarPreview.innerHTML='';
+        const img=new Image();img.src=tempAuthAvatar;img.style.width='100%';img.style.height='100%';img.style.objectFit='cover';
+        authAvatarPreview.appendChild(img);
+      };
+      reader.readAsDataURL(f);
+    });
+
+    function signUp(){
+      const u=document.getElementById('username').value.trim();
+      const p=document.getElementById('password').value.trim();
+      if(!u||!p){alert('Enter username and password');return;}
+      if(localStorage.getItem(getUserKey(u))){alert('User already exists');return;}
+      const avatar=tempAuthAvatar || makeDefaultAvatar(u);
+      const userData={password:p,projects:{},profile:{name:u,desc:'',avatar}};
+      ensureSocial(userData);
+      writeUser(u,userData);
+      localStorage.setItem('loggedIn',u);
+      currentUser=u;showDashboard();
+    }
+
+    function logIn(){
+      const u=document.getElementById('username').value.trim();
+      const p=document.getElementById('password').value.trim();
+      const data=readUser(u);
+      if(!data){alert('User not found');return;}
+      if(data.password!==p){alert('Wrong password');return;}
+      ensureSocial(data);writeUser(u,data);
+      localStorage.setItem('loggedIn',u);
+      currentUser=u;showDashboard();
+    }
+
+    function logout(){
+      localStorage.removeItem('loggedIn');
+      document.getElementById('dashboard').style.display='none';
+      document.getElementById('workspace').style.display='none';
+      document.getElementById('auth').style.display='flex';
+    }
+
+    // ===== Dashboard =====
+    function showDashboard(){
+      document.getElementById('auth').style.display='none';
+      document.getElementById('workspace').style.display='none';
+      const dash=document.getElementById('dashboard');
+      dash.style.display='block';
+      const uData=ensureSocial(readUser(currentUser));
+      setChipProfile(uData);
+      writeUser(currentUser,uData); // persist social init if missing
+      loadProjects();
+    }
+
+    function createProject(name){
+      const uData=readUser(currentUser);
+      if(uData.projects[name]){alert('Project already exists');return false;}
+      uData.projects[name]={};
+      writeUser(currentUser,uData);
+      return true;
+    }
+
+    function loadProjects(){
+      const uData=readUser(currentUser);
+      const container=document.getElementById('projects');
+      container.innerHTML='';
+      const keys=Object.keys(uData.projects);
+      if(!keys.length){
+        const empty=document.createElement('div');
+        empty.style.opacity='.75';empty.textContent='No saved projects yet';
+        container.appendChild(empty);
+        return;
+      }
+      for(const p of keys){
+        const box=document.createElement('div');
+        box.className='project-box';
+        box.innerHTML=`<div style="font-weight:700;margin-bottom:6px">${p}</div>
+                       <div style="opacity:.8;font-size:12px">Click to open</div>`;
+        box.onclick=()=>openProject(p);
+        container.appendChild(box);
+      }
+    }
+
+    // ===== Workspace =====
+    function openProject(name){
+      document.getElementById('dashboard').style.display='none';
+      document.getElementById('workspace').style.display='flex';
+      currentProject=name;currentFile=null;
+      renderFriendList();
+      document.getElementById('noFileMsg').style.display='flex';
+      document.getElementById('editor').style.display='none';
+      refreshFileList();
+    }
+
+    function refreshFileList(){
+      const uData=readUser(currentUser);const files=uData.projects[currentProject]||{};
+      const list=document.getElementById('fileList');list.innerHTML='';
+      Object.keys(files).forEach(fname=>{
+        const li=document.createElement('li');li.textContent=fname;li.onclick=()=>openFile(fname);list.appendChild(li);
+      });
+    }
+
+    document.getElementById('addFileBtn').onclick=function(){
+      const fname=prompt('File name? (index.html / style.css / script.js)');
+      if(!fname) return;
+      const ok=/\.(html|css|js)$/i.test(fname);
+      if(!ok){alert('Only .html, .css, .js allowed');return;}
+      const uData=readUser(currentUser);
+      uData.projects[currentProject] ||= {};
+      if(uData.projects[currentProject][fname]){alert('File already exists');return;}
+      uData.projects[currentProject][fname]='';
+      writeUser(currentUser,uData);
+      refreshFileList();openFile(fname);
+    };
+
+    function openFile(fname){
+      currentFile=fname;
+      document.getElementById('noFileMsg').style.display='none';
+      document.getElementById('editor').style.display='block';
+      const uData=readUser(currentUser);
+      editor.setValue(uData.projects[currentProject][fname]||'', -1);
+      if(fname.endsWith('.css')) editor.session.setMode('ace/mode/css');
+      else if(fname.endsWith('.js')) editor.session.setMode('ace/mode/javascript');
+      else editor.session.setMode('ace/mode/html');
+    }
+
+    document.getElementById('saveBtn').onclick=function(){
+      if(!currentFile){alert('Please add file first');return;}
+      const uData=readUser(currentUser);
+      uData.projects[currentProject][currentFile]=editor.getValue();
+      writeUser(currentUser,uData);
+      alert('File saved');
+    };
+
+    // Preview: index.html + optional style.css + script.js inline
+    document.getElementById('previewBtn').onclick=function(){
+      const uData=readUser(currentUser);const proj=uData.projects[currentProject]||{};
+      if(!proj['index.html']){alert('index.html required for preview');return;}
+      let html=proj['index.html'];
+      if(proj['style.css']) html+='<style>'+proj['style.css']+'</style>';
+      if(proj['script.js']) html+='<script>'+proj['script.js']+'<\\/script>';
+      document.getElementById('previewFrame').srcdoc=html;
+      document.getElementById('previewArea').style.display='block';
+    };
+    document.getElementById('closePreviewBtn').onclick=()=>document.getElementById('previewArea').style.display='none';
+
+    // ===== Profile modal =====
+    const profileModal=document.getElementById('profileModal');
+    document.getElementById('openProfile').onclick=function(){
+      const uData=readUser(currentUser);
+      document.getElementById('profileName').value=uData.profile?.name||currentUser;
+      document.getElementById('profileDesc').value=uData.profile?.desc||'';
+      profileModal.style.display='flex';
+    }
+    document.getElementById('closeProfile').onclick=()=>profileModal.style.display='none';
+
+    document.getElementById('saveProfile').onclick=function(){
+      const name=document.getElementById('profileName').value.trim() || currentUser;
+      const desc=document.getElementById('profileDesc').value.trim();
+      const file=document.getElementById('profileAvatar').files?.[0];
+      const uData=readUser(currentUser);
+      function finalize(avatarData){
+        uData.profile={name,desc,avatar:avatarData||uData.profile?.avatar||makeDefaultAvatar(name)};
+        writeUser(currentUser,uData);
+        setChipProfile(uData);
+        profileModal.style.display='none';
+      }
+      if(file){
+        const reader=new FileReader();
+        reader.onload=e=>finalize(e.target.result);
+        reader.readAsDataURL(file);
+      }else{
+        finalize(null);
+      }
+    };
+
+    // ===== New Project: open workspace immediately after Enter =====
+    document.getElementById('newProjectBtn').onclick=function(){
+      const name=prompt('Project name?');
+      if(!name) return;
+      if(createProject(name)){
+        openProject(name); // immediately open workspace
+      }
+      loadProjects();
+    };
+
+    // ===== Move around =====
+    document.getElementById('logoutBtn').onclick=logout;
+
+    // ===== Search Users =====
+    const searchModal=document.getElementById("searchModal");
+    const searchUsersBtn=document.getElementById("searchUsersBtn");
+    const closeSearch=document.getElementById("closeSearch");
+    const searchInput=document.getElementById("searchInput");
+    const searchResult=document.getElementById("searchResult");
+
+    function userExists(username){
+      return !!localStorage.getItem(getUserKey(username));
+    }
+
+    function getStatusBetween(me, other){
+      if(me===other) return 'self';
+      const meData=ensureSocial(readUser(me));
+      const otherData=ensureSocial(readUser(other));
+      if(meData.social.friends.includes(other)) return 'friends';
+      if(meData.social.requests.outgoing.includes(other)) return 'sent';
+      if(meData.social.requests.incoming.includes(other)) return 'incoming';
+      if(otherData.social.requests.outgoing.includes(me)) return 'incoming'; // redundant safety
+      return 'none';
+    }
+
+    function renderSearchCard(uname){
+      const u=readUser(uname);
+      const avatar=u?.profile?.avatar||makeDefaultAvatar(uname);
+      const display=u?.profile?.name||uname;
+      const desc=u?.profile?.desc||"No description";
+      const status=getStatusBetween(currentUser, uname);
+
+      let btnHtml='';
+      if(status==='self'){
+        btnHtml='<span class="badge">This is you</span>';
+      }else if(status==='friends'){
+        btnHtml='<span class="badge">Friends</span>';
+      }else if(status==='sent'){
+        btnHtml='<span class="badge">Request Sent</span>';
+      }else if(status==='incoming'){
+        btnHtml=`<button id="acceptFromSearch">Accept</button>`;
+      }else{
+        btnHtml=`<button id="addFromSearch" class="rainbow">Add Friend</button>`;
+      }
+
+      searchResult.innerHTML=`
+        <div style="display:flex;align-items:center;gap:12px;background:var(--glass);padding:12px;border-radius:12px;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:50px;height:50px;flex:0 0 auto;border-radius:50%;overflow:hidden">
+              <img src="${avatar}" style="width:100%;height:100%;object-fit:cover">
+            </div>
+            <div style="text-align:left">
+              <div style="font-weight:600">${display}</div>
+              <div style="opacity:.8;font-size:13px">@${uname} • ${desc}</div>
+            </div>
+          </div>
+          <div>${btnHtml}</div>
+        </div>`;
+
+      const addBtn=document.getElementById('addFromSearch');
+      const acceptBtn=document.getElementById('acceptFromSearch');
+      if(addBtn){
+        addBtn.onclick=()=>sendFriendRequest(currentUser, uname, true);
+      }
+      if(acceptBtn){
+        acceptBtn.onclick=()=>acceptFriendRequest(uname, currentUser, true); // from uname -> me
+      }
+    }
+
+    searchUsersBtn.onclick=()=>{searchInput.value="";searchResult.innerHTML="";searchModal.style.display="flex";}
+    closeSearch.onclick=()=>{searchModal.style.display="none";}
+    searchInput.onkeyup=(e)=>{
+      const query=searchInput.value.trim();
+      if(!query){searchResult.innerHTML="<div style='opacity:.7'>Type a username...</div>";return;}
+      // find first match by username contains (case-insensitive)
+      let found=null;
+      for(let i=0;i<localStorage.length;i++){
+        const key=localStorage.key(i);
+        if(key.startsWith("user_")){
+          const uname=key.replace("user_","");
+          if(uname.toLowerCase().includes(query.toLowerCase())){found=uname;break;}
+        }
+      }
+      if(found){ renderSearchCard(found); }
+      else{ searchResult.innerHTML="<div style='color:#f66'>No user found</div>"; }
+      if(e.key==='Enter' && found){ /* nothing extra */ }
+    };
+
+    // ===== Friend System =====
+    function sendFriendRequest(from, to, rerenderSearch=false){
+      if(from===to) return;
+      const a=ensureSocial(readUser(from));
+      const b=ensureSocial(readUser(to));
+      if(a.social.friends.includes(to)){ if(rerenderSearch) renderSearchCard(to); return; }
+      if(a.social.requests.outgoing.includes(to)){ if(rerenderSearch) renderSearchCard(to); return; }
+      if(a.social.requests.incoming.includes(to)){ // accept mutually
+        acceptFriendRequest(to, from, rerenderSearch);
+        return;
+      }
+      a.social.requests.outgoing.push(to);
+      b.social.requests.incoming.push(from);
+      writeUser(from,a); writeUser(to,b);
+      if(rerenderSearch) renderSearchCard(to);
+      alert('Friend request sent!');
+    }
+
+    function acceptFriendRequest(from, to, rerenderSearch=false){
+      // from -> to request; 'to' is current user usually
+      const A=ensureSocial(readUser(from));
+      const B=ensureSocial(readUser(to));
+
+      // remove request
+      B.social.requests.incoming = B.social.requests.incoming.filter(u=>u!==from);
+      A.social.requests.outgoing = A.social.requests.outgoing.filter(u=>u!==to);
+
+      // add to friends
+      if(!A.social.friends.includes(to)) A.social.friends.push(to);
+      if(!B.social.friends.includes(from)) B.social.friends.push(from);
+
+      writeUser(from,A); writeUser(to,B);
+
+      if(rerenderSearch) renderSearchCard(from);
+      renderFriendList();
+      loadInbox(); // refresh inbox modal if open
+    }
+
+    function declineFriendRequest(from, to){
+      const A=ensureSocial(readUser(from));
+      const B=ensureSocial(readUser(to));
+      B.social.requests.incoming = B.social.requests.incoming.filter(u=>u!==from);
+      A.social.requests.outgoing = A.social.requests.outgoing.filter(u=>u!==to);
+      writeUser(from,A); writeUser(to,B);
+      loadInbox();
+    }
+
+    // ===== Inbox =====
+    const inboxModal=document.getElementById('inboxModal');
+    const inboxBtn=document.getElementById('inboxBtn');
+    const closeInbox=document.getElementById('closeInbox');
+    const inboxList=document.getElementById('inboxList');
+
+    function loadInbox(){
+      const uData=ensureSocial(readUser(currentUser));
+      const inc=uData.social.requests.incoming||[];
+      inboxList.innerHTML='';
+      if(!inc.length){
+        inboxList.innerHTML="<div style='opacity:.75'>No new requests</div>";
+        return;
+      }
+      inc.forEach(un=>{
+        const other=readUser(un);
+        const name=other?.profile?.name||un;
+        const avatar=other?.profile?.avatar||makeDefaultAvatar(name);
+        const row=document.createElement('div');
+        row.className='req-item';
+        row.innerHTML=`
+          <div class="req-left">
+            <img src="${avatar}" alt="">
+            <div>
+              <div style="font-weight:600">${name}</div>
+              <div style="opacity:.75;font-size:12px">@${un}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="rainbow" data-accept="${un}">Accept</button>
+            <button data-decline="${un}">Decline</button>
+          </div>`;
+        inboxList.appendChild(row);
+      });
+
+      // bind buttons
+      inboxList.querySelectorAll('[data-accept]').forEach(btn=>{
+        btn.onclick=()=>acceptFriendRequest(btn.getAttribute('data-accept'), currentUser);
+      });
+      inboxList.querySelectorAll('[data-decline]').forEach(btn=>{
+        btn.onclick=()=>declineFriendRequest(btn.getAttribute('data-decline'), currentUser);
+      });
+    }
+
+    inboxBtn.onclick=()=>{ loadInbox(); inboxModal.style.display='flex'; }
+    closeInbox.onclick=()=>{ inboxModal.style.display='none'; }
+
+    // ===== Search Modal open/close already set above =====
+
+    // ===== Bind auth buttons =====
+    document.getElementById('signUpBtn').onclick=signUp;
+    document.getElementById('logInBtn').onclick=logIn;
+
+  </script>
+</body>
+</html>
