@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkyNexaHost</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body{margin:0;font-family:'Poppins',sans-serif;background:#0a0a0a;color:white;}
+
+    /* ==== LOADING ==== */
+    #loadingScreen {
+      position:fixed;top:0;left:0;width:100%;height:100%;
+      background:linear-gradient(135deg,#1e3c72,#2a5298);
+      display:flex;align-items:center;justify-content:center;
+      flex-direction:column;z-index:2000;
+    }
+    .loading-logo{
+      font-size:42px;font-weight:700;
+      background:linear-gradient(90deg,red,orange,yellow,green,cyan,blue,violet);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+      animation:glow 2s infinite alternate;
+    }
+    @keyframes glow{from{text-shadow:0 0 5px #fff;}to{text-shadow:0 0 20px #fff,0 0 40px #0ff;}}
+    .loading-bar{width:200px;height:8px;background:rgba(255,255,255,0.2);border-radius:8px;margin-top:20px;overflow:hidden;}
+    .loading-fill{width:0;height:100%;background:linear-gradient(90deg,#00ffea,#00aaff);animation:fill 4s forwards;}
+    @keyframes fill{to{width:100%;}}
+
+    /* ==== BUTTONS ==== */
+    button{
+      background:#111;border:2px solid #00ffea;color:#00ffea;
+      padding:10px 20px;border-radius:8px;cursor:pointer;
+      transition:all 0.4s ease;font-weight:600;
+    }
+    button:hover{
+      background:linear-gradient(90deg,red,orange,yellow,green,cyan,blue,violet);
+      color:#111;box-shadow:0 0 20px #fff;transform:scale(1.1);
+    }
+
+    /* ==== AUTH ==== */
+    #auth{height:100vh;display:none;align-items:center;justify-content:center;}
+    #authCard{background:rgba(255,255,255,0.05);padding:30px;border-radius:12px;text-align:center;}
+    #authCard input{display:block;width:100%;margin:10px 0;padding:10px;border-radius:8px;border:none;}
+
+    /* ==== DASHBOARD ==== */
+    #dashboard{display:none;text-align:center;padding:20px;position:relative;}
+    #logoutBtn{position:absolute;top:10px;right:10px;font-size:12px;padding:6px 12px;}
+    #projects{margin-top:20px;display:flex;flex-wrap:wrap;justify-content:center;gap:20px;}
+    .project-box{background:rgba(255,255,255,0.05);padding:20px;border-radius:10px;width:200px;cursor:pointer;transition:0.3s;}
+    .project-box:hover{transform:scale(1.08);background:rgba(255,255,255,0.1);}
+
+    /* ==== WORKSPACE ==== */
+    #workspace{display:none;height:100vh;display:flex;}
+    #sidebar{width:200px;background:rgba(255,255,255,0.05);padding:10px;}
+    #fileList{list-style:none;margin-top:10px;}
+    #fileList li{padding:6px;cursor:pointer;border-radius:6px;transition:0.3s;}
+    #fileList li:hover{background:rgba(255,255,255,0.1);transform:scale(1.05);}
+    #editorArea{flex:1;display:flex;flex-direction:column;}
+    #editor{flex:1;display:none;}
+    #noFileMsg{flex:1;display:flex;align-items:center;justify-content:center;color:gray;font-size:18px;font-style:italic;}
+
+    /* ==== PREVIEW ==== */
+    #previewArea{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;display:none;z-index:1500;}
+    #previewFrame{width:100%;height:100%;border:none;}
+    #closePreviewBtn{position:absolute;top:10px;right:10px;}
+  </style>
+</head>
+<body>
+
+  <!-- LOADING -->
+  <div id="loadingScreen">
+    <div class="loading-logo">SkyNexaHost</div>
+    <div class="loading-bar"><div class="loading-fill"></div></div>
+  </div>
+
+  <!-- AUTH -->
+  <div id="auth">
+    <div id="authCard">
+      <h2>SkyNexaHost</h2>
+      <input type="text" id="username" placeholder="Username">
+      <input type="password" id="password" placeholder="Password">
+      <button id="signUpBtn">Sign Up</button>
+      <button id="logInBtn">Log In</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard">
+    <button id="logoutBtn">Logout</button>
+    <h2>Dashboard</h2>
+    <button id="newProjectBtn">+ New Project</button>
+    <button id="breakBtn">🎮 Break Games</button>
+    <div id="projects"></div>
+  </div>
+
+  <!-- WORKSPACE -->
+  <div id="workspace">
+    <div id="sidebar">
+      <button id="addFileBtn">+ Add File</button>
+      <ul id="fileList"></ul>
+    </div>
+    <div id="editorArea">
+      <div style="display:flex;justify-content:space-between;">
+        <button id="saveBtn">Save</button>
+        <button id="previewBtn">Preview</button>
+      </div>
+      <div id="noFileMsg">Please add a file</div>
+      <div id="editor" style="width:100%;height:100%;"></div>
+    </div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div id="previewArea">
+    <iframe id="previewFrame"></iframe>
+    <button id="closePreviewBtn">Close</button>
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.0/ace.js"></script>
+<script>
+  let currentUser=null,currentProject=null,currentFile=null;
+  let editor=ace.edit("editor");
+  editor.setTheme("ace/theme/monokai");
+  editor.setValue("");
+
+  // ==== LOADING ==== 
+  window.onload=()=>{
+    setTimeout(()=>{
+      document.getElementById("loadingScreen").style.display="none";
+      let u=localStorage.getItem("loggedIn");
+      if(u){currentUser=u;showDashboard();} else {document.getElementById("auth").style.display="flex";}
+    },4000);
+  };
+
+  // ==== AUTH ==== 
+  function signUp(){
+    let u=document.getElementById("username").value.trim();
+    let p=document.getElementById("password").value.trim();
+    if(!u||!p){alert("Enter username and password");return;}
+    if(localStorage.getItem("user_"+u)){alert("User already exists");return;}
+    localStorage.setItem("user_"+u,JSON.stringify({password:p,projects:{}}));
+    localStorage.setItem("loggedIn",u);
+    currentUser=u;showDashboard();
+  }
+  function logIn(){
+    let u=document.getElementById("username").value.trim();
+    let p=document.getElementById("password").value.trim();
+    let data=localStorage.getItem("user_"+u);
+    if(!data){alert("User not found");return;}
+    let parsed=JSON.parse(data);
+    if(parsed.password!==p){alert("Wrong password");return;}
+    localStorage.setItem("loggedIn",u);
+    currentUser=u;showDashboard();
+  }
+  function logout(){
+    localStorage.removeItem("loggedIn");
+    document.getElementById("dashboard").style.display="none";
+    document.getElementById("workspace").style.display="none";
+    document.getElementById("auth").style.display="flex";
+  }
+
+  // ==== DASHBOARD ==== 
+  function showDashboard(){
+    document.getElementById("auth").style.display="none";
+    document.getElementById("workspace").style.display="none";
+    document.getElementById("dashboard").style.display="block";
+    loadProjects();
+  }
+  function createProject(name){
+    let user=JSON.parse(localStorage.getItem("user_"+currentUser));
+    if(user.projects[name]){alert("Project already exists");return;}
+    user.projects[name]={};
+    localStorage.setItem("user_"+currentUser,JSON.stringify(user));
+    openProject(name);
+  }
+  function loadProjects(){
+    let user=JSON.parse(localStorage.getItem("user_"+currentUser));
+    let container=document.getElementById("projects");
+    container.innerHTML="";
+    for(let p in user.projects){
+      let box=document.createElement("div");
+      box.className="project-box";
+      box.textContent=p;
+      box.onclick=()=>openProject(p);
+      container.appendChild(box);
+    }
+  }
+
+  // ==== WORKSPACE ==== 
+  function openProject(name){
+    document.getElementById("dashboard").style.display="none";
+    document.getElementById("workspace").style.display="flex";
+    currentProject=name;refreshFileList();
+    document.getElementById("noFileMsg").style.display="flex";
+    document.getElementById("editor").style.display="none";
+    currentFile=null;
+  }
+  function refreshFileList(){
+    let user=JSON.parse(localStorage.getItem("user_"+currentUser));
+    let files=user.projects[currentProject];
+    let list=document.getElementById("fileList");
+    list.innerHTML="";
+    for(let f in files){
+      let li=document.createElement("li");
+      li.textContent=f;
+      li.onclick=()=>openFile(f);
+      list.appendChild(li);
+    }
+  }
+  document.getElementById("addFileBtn").onclick=function(){
+    let fname=prompt("File name? (index.html/style.css/script.js)");
+    if(!fname) return;
+    if(!fname.endsWith(".html") && !fname.endsWith(".css") && !fname.endsWith(".js")){
+      alert("Only .html, .css, .js allowed");return;
+    }
+    let user=JSON.parse(localStorage.getItem("user_"+currentUser));
+    if(user.projects[currentProject][fname]){alert("File already exists");return;}
+    user.projects[currentProject][fname]="";
+    localStorage.setItem("user_"+currentUser,JSON.stringify(user));
+    refreshFileList();openFile(fname);
+  };
+  function openFile(fname){
+    currentFile=fname;
+    document.getElementById("noFileMsg").style.display="none";
+    document.getElementById("editor").style.display="block";
+    let user=JSON.parse(localStorage.getItem("user_"+currentUser));
+    editor.setValue(user.projects[currentProject][fname]||"", -1);
+    if(fname.endsWith(".css")) editor.session.setMode("ace/mode/css");
+    else if(fname.endsWith(".js")) editor.session.setMode("ace/mode/javascript");
+    else editor.session.setMode("ace/mode/html");
+  }
+  document.getElementById("saveBtn").onclick=function(){
+    if(!currentFile){alert("Please add file first");return;}
+    let user=JSON.parse(localStorage.getItem("user_"+currentUser));
+    user.projects[currentProject][currentFile]=editor.getValue();
+    localStorage.setItem("user_"+currentUser,JSON.stringify(user));
+    alert("File saved");
+  };
+
+  // ==== PREVIEW ==== 
+  document.getElementById("previewBtn").onclick=function(){
+    let user=JSON.parse(localStorage.getItem("user_"+currentUser));
+    let proj=user.projects[currentProject];
+    if(!proj["index.html"]){alert("index.html required for preview");return;}
+    let html=proj["index.html"];
+    if(proj["style.css"]) html+="<style>"+proj["style.css"]+"</style>";
+    if(proj["script.js"]) html+="<script>"+proj["script.js"]+"<\/script>";
+    document.getElementById("previewFrame").srcdoc=html;
+    document.getElementById("previewArea").style.display="block";
+  };
+  document.getElementById("closePreviewBtn").onclick=function(){
+    document.getElementById("previewArea").style.display="none";
+  };
+
+  // ==== INIT ==== 
+  document.getElementById("signUpBtn").onclick=signUp;
+  document.getElementById("logInBtn").onclick=logIn;
+  document.getElementById("logoutBtn").onclick=logout;
+  document.getElementById("newProjectBtn").onclick=function(){
+    let name=prompt("Project name?");
+    if(name) createProject(name);
+  };
+
+  // 🎮 Break Games button → BreakGame.html এ যাবে
+  document.getElementById("breakBtn").onclick=function(){
+    window.location.href="BreakGame.html";
+  };
+</script>
+</body>
+</html>
+
+
