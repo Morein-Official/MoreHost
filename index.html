@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkyNexaHost</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --brand:#00ffea;
+      --bg:#0a0a0a;
+      --glass:rgba(255,255,255,0.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Poppins',sans-serif;background:var(--bg);color:#fff}
+    /* ===== LOADING ===== */
+    #loadingScreen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2000;background:linear-gradient(135deg,#1e3c72,#2a5298)}
+    .loading-logo{font-size:44px;font-weight:700;letter-spacing:.5px;background:linear-gradient(90deg,red,orange,yellow,green,cyan,blue,violet);-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:glow 2s ease-in-out infinite alternate}
+    @keyframes glow{from{text-shadow:0 0 6px #fff}to{text-shadow:0 0 24px #fff,0 0 48px #0ff}}
+    .loading-bar{width:240px;height:10px;border-radius:999px;background:rgba(255,255,255,0.2);overflow:hidden;margin-top:18px}
+    .loading-fill{height:100%;width:0;background:linear-gradient(90deg,#00ffea,#00aaff);animation:fill 4s forwards}
+    @keyframes fill{to{width:100%}}
+    /* ===== BUTTONS ===== */
+    button{background:#111;border:2px solid var(--brand);color:var(--brand);padding:10px 20px;border-radius:12px;cursor:pointer;transition:transform .25s ease, box-shadow .25s ease, filter .25s ease}
+    button:hover{transform:translateY(-2px) scale(1.06);box-shadow:0 8px 24px rgba(0,0,0,.4),0 0 18px rgba(0,255,234,.35);filter:saturate(1.2)}
+    .rainbow:hover{background:linear-gradient(90deg,red,orange,yellow,green,cyan,blue,violet);color:#111;border-color:transparent}
+    #auth,#dashboard,#workspace,#previewArea{display:none}
+    /* ===== DASHBOARD ===== */
+    #dashboard{padding:22px 16px 28px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{font-weight:700;font-size:20px;letter-spacing:.3px}
+    .profile-chip{display:flex;align-items:center;gap:10px;background:var(--glass);padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);cursor:pointer}
+    .chip-avatar{width:36px;height:36px;border-radius:50%;overflow:hidden}
+    .chip-avatar img{width:100%;height:100%;object-fit:cover}
+    .dash-main{text-align:center;margin-top:20px}
+    .project-box{background:var(--glass);padding:18px;border-radius:14px;width:220px;margin:10px auto;cursor:pointer}
+    /* ===== MODALS ===== */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:1600}
+    .modal-card{width:min(560px,92vw);background:#0f0f10;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:18px}
+  </style>
+</head>
+<body>
+  <!-- LOADING -->
+  <div id="loadingScreen">
+    <div class="loading-logo">SkyNexaHost</div>
+    <div class="loading-bar"><div class="loading-fill"></div></div>
+  </div>
+
+  <!-- AUTH -->
+  <div id="auth">
+    <div id="authCard">
+      <h2>Welcome to SkyNexaHost</h2>
+      <input type="text" id="username" placeholder="Username (required)">
+      <input type="password" id="password" placeholder="Password (required)">
+      <button id="signUpBtn" class="rainbow">Sign Up</button>
+      <button id="logInBtn">Log In</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard">
+    <div class="topbar">
+      <div class="brand">⚡ SkyNexaHost</div>
+      <div>
+        <div class="profile-chip" id="openProfile">
+          <div class="chip-avatar"><img id="chipAvatar"></div>
+          <div class="chip-name" id="chipName">User</div>
+        </div>
+        <button id="logoutBtn">Logout</button>
+        <button id="inboxBtn">📥 Inbox</button>
+      </div>
+    </div>
+    <div class="dash-main">
+      <button id="searchUsersBtn" class="rainbow">🔍 Search Users</button>
+      <button id="newProjectBtn" class="rainbow">+ New Project</button>
+      <div id="projects"></div>
+    </div>
+  </div>
+
+  <!-- WORKSPACE -->
+  <div id="workspace">
+    <button id="addFileBtn" class="rainbow">+ Add File</button>
+    <div id="editor" style="flex:1"></div>
+  </div>
+
+  <!-- SEARCH USERS MODAL -->
+  <div class="modal" id="searchModal">
+    <div class="modal-card">
+      <h3>Search Users</h3>
+      <input type="text" id="searchInput" placeholder="Enter username...">
+      <div id="searchResult"></div>
+      <button id="closeSearch">Close</button>
+    </div>
+  </div>
+
+  <!-- INBOX MODAL -->
+  <div class="modal" id="inboxModal">
+    <div class="modal-card">
+      <h3>Friend Requests</h3>
+      <div id="inboxList"></div>
+      <button id="closeInbox">Close</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.0/ace.js"></script>
+  <script>
+    let currentUser=null;
+    function getUserKey(u){return "user_"+u}
+    function readUser(u){return JSON.parse(localStorage.getItem(getUserKey(u))||"null")}
+    function writeUser(u,data){localStorage.setItem(getUserKey(u),JSON.stringify(data))}
+
+    window.onload=()=>{setTimeout(()=>{document.getElementById("loadingScreen").style.display="none";document.getElementById("auth").style.display="block"},4000)}
+
+    document.getElementById("signUpBtn").onclick=()=>{
+      const u=document.getElementById("username").value,p=document.getElementById("password").value;
+      if(!u||!p)return alert("Fill all");
+      writeUser(u,{password:p,projects:{},friends:[],requests:[]});
+      currentUser=u;localStorage.setItem("loggedIn",u);showDashboard();
+    }
+    document.getElementById("logInBtn").onclick=()=>{
+      const u=document.getElementById("username").value,p=document.getElementById("password").value;
+      const data=readUser(u);
+      if(!data||data.password!==p)return alert("Invalid");
+      currentUser=u;localStorage.setItem("loggedIn",u);showDashboard();
+    }
+    function showDashboard(){document.getElementById("auth").style.display="none";document.getElementById("dashboard").style.display="block"}
+
+    // New Project auto open
+    document.getElementById("newProjectBtn").onclick=()=>{
+      const name=prompt("Project name?");
+      if(!name)return;
+      const uData=readUser(currentUser);uData.projects[name]={};writeUser(currentUser,uData);
+      openWorkspace();
+    }
+    function openWorkspace(){
+      document.getElementById("dashboard").style.display="none";
+      document.getElementById("workspace").style.display="block";
+    }
+
+    // Search Users
+    const searchModal=document.getElementById("searchModal");
+    document.getElementById("searchUsersBtn").onclick=()=>{searchModal.style.display="flex"}
+    document.getElementById("closeSearch").onclick=()=>{searchModal.style.display="none"}
+    document.getElementById("searchInput").onkeyup=()=>{
+      const q=document.getElementById("searchInput").value.toLowerCase();
+      let found=null;
+      for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key.startsWith("user_")){const uname=key.replace("user_","");if(uname.toLowerCase().includes(q)){found=uname;break}}}
+      if(found){
+        document.getElementById("searchResult").innerHTML=`${found} <button onclick="sendFriendReq('${found}')">Add Friend</button>`;
+      }else document.getElementById("searchResult").innerHTML="No user found";
+    }
+
+    function sendFriendReq(to){
+      const data=readUser(to);data.requests.push(currentUser);writeUser(to,data);alert("Friend request sent!");
+    }
+
+    // Inbox
+    const inboxModal=document.getElementById("inboxModal");
+    document.getElementById("inboxBtn").onclick=()=>{
+      inboxModal.style.display="flex";
+      const uData=readUser(currentUser);
+      const list=document.getElementById("inboxList");list.innerHTML="";
+      uData.requests.forEach(r=>{
+        list.innerHTML+=`<div>${r} <button onclick="acceptFriend('${r}')">Accept</button></div>`;
+      });
+    }
+    document.getElementById("closeInbox").onclick=()=>{inboxModal.style.display="none"}
+    function acceptFriend(from){
+      const uData=readUser(currentUser);
+      uData.friends.push(from);
+      uData.requests=uData.requests.filter(x=>x!==from);
+      writeUser(currentUser,uData);
+      const fData=readUser(from);fData.friends.push(currentUser);writeUser(from,fData);
+      alert("Friend Added!");
+      document.getElementById("inboxModal").style.display="none";
+    }
+  </script>
+</body>
+</html>
