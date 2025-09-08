@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkyNexaHost</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --brand:#00ffea;
+      --bg:#0a0a0a;
+      --glass:rgba(255,255,255,0.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Poppins',sans-serif;background:var(--bg);color:#fff}
+
+    /* ====== BUTTONS ====== */
+    button{background:#111;border:2px solid var(--brand);color:var(--brand);padding:8px 14px;border-radius:10px;cursor:pointer;transition:.25s}
+    button:hover{transform:scale(1.05);box-shadow:0 0 10px rgba(0,255,234,.4)}
+    .rainbow:hover{background:linear-gradient(90deg,red,orange,yellow,green,cyan,blue,violet);color:#111;border-color:transparent}
+
+    /* ====== LAYOUT ====== */
+    #auth,#dashboard,#workspace{display:none}
+    .topbar{display:flex;justify-content:space-between;align-items:center;padding:12px}
+    .profile-chip{display:flex;align-items:center;gap:8px;background:var(--glass);padding:6px 10px;border-radius:999px;cursor:pointer}
+    .chip-avatar{width:34px;height:34px;border-radius:50%;overflow:hidden}
+    .chip-avatar img{width:100%;height:100%;object-fit:cover}
+
+    .dash-main{text-align:center;margin-top:20px}
+    .project-box{background:var(--glass);padding:14px;border-radius:12px;display:inline-block;margin:6px 8px;cursor:pointer}
+
+    /* ====== MODALS ====== */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:1600}
+    .modal-card{width:min(500px,90vw);background:#111;border-radius:14px;padding:16px}
+    .friend-box{display:flex;align-items:center;justify-content:space-between;background:var(--glass);padding:10px;border-radius:10px;margin:6px 0}
+    .friend-info{display:flex;align-items:center;gap:10px}
+    .friend-info img{width:40px;height:40px;border-radius:50%}
+  </style>
+</head>
+<body>
+
+  <!-- AUTH -->
+  <div id="auth">
+    <div style="max-width:400px;margin:80px auto;background:var(--glass);padding:20px;border-radius:12px;text-align:center">
+      <h2>SkyNexaHost</h2>
+      <input id="username" placeholder="Username" style="width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #555;background:#000;color:#fff"><br>
+      <input id="password" type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #555;background:#000;color:#fff"><br>
+      <button id="signUpBtn" class="rainbow" style="width:48%">Sign Up</button>
+      <button id="logInBtn" style="width:48%">Log In</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard">
+    <div class="topbar">
+      <div style="font-weight:700">⚡ Dashboard</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="profile-chip" id="openProfile">
+          <div class="chip-avatar"><img id="chipAvatar"></div>
+          <div id="chipName">User</div>
+        </div>
+        <button id="inboxBtn">📥 Inbox</button>
+        <button id="logoutBtn">Logout</button>
+      </div>
+    </div>
+    <div class="dash-main">
+      <button id="searchUsersBtn" class="rainbow">🔍 Search Users</button>
+      <button id="newProjectBtn" class="rainbow">+ New Project</button>
+      <div id="projects"></div>
+
+      <h3 style="margin-top:20px">👥 Friends</h3>
+      <div id="friendsList" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- SEARCH USERS MODAL -->
+  <div class="modal" id="searchModal">
+    <div class="modal-card">
+      <h3>Search Users</h3>
+      <input id="searchInput" placeholder="Enter username..." style="width:100%;padding:10px;border-radius:8px;background:#000;color:#fff">
+      <div id="searchResult" style="margin-top:12px"></div>
+      <button id="closeSearch">Close</button>
+    </div>
+  </div>
+
+  <!-- INBOX MODAL -->
+  <div class="modal" id="inboxModal">
+    <div class="modal-card">
+      <h3>Friend Requests</h3>
+      <div id="inboxList"></div>
+      <button id="closeInbox">Close</button>
+    </div>
+  </div>
+
+<script>
+  let currentUser=null;
+
+  function getUserKey(u){return "user_"+u}
+  function readUser(u){return JSON.parse(localStorage.getItem(getUserKey(u))||"null")}
+  function writeUser(u,d){localStorage.setItem(getUserKey(u),JSON.stringify(d))}
+
+  function makeDefaultAvatar(name="U"){
+    const cvs=document.createElement("canvas");cvs.width=80;cvs.height=80;const ctx=cvs.getContext("2d");
+    ctx.fillStyle="#06beb6";ctx.fillRect(0,0,80,80);
+    ctx.fillStyle="#fff";ctx.font="bold 40px sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText(name[0].toUpperCase(),40,44);
+    return cvs.toDataURL();
+  }
+
+  function showDashboard(){
+    document.getElementById("auth").style.display="none";
+    document.getElementById("dashboard").style.display="block";
+    const uData=readUser(currentUser);
+    document.getElementById("chipName").textContent=uData.profile?.name||currentUser;
+    document.getElementById("chipAvatar").src=uData.profile?.avatar||makeDefaultAvatar(currentUser);
+    loadFriends();
+  }
+
+  function signUp(){
+    const u=document.getElementById("username").value.trim();
+    const p=document.getElementById("password").value.trim();
+    if(!u||!p)return;
+    if(localStorage.getItem(getUserKey(u))){alert("User exists");return;}
+    const data={password:p,projects:{},profile:{name:u,avatar:makeDefaultAvatar(u)},friends:[],requests:[]};
+    writeUser(u,data);
+    currentUser=u;localStorage.setItem("loggedIn",u);showDashboard();
+  }
+  function logIn(){
+    const u=document.getElementById("username").value.trim(),p=document.getElementById("password").value.trim();
+    const d=readUser(u);if(!d||d.password!==p){alert("Invalid");return;}
+    currentUser=u;localStorage.setItem("loggedIn",u);showDashboard();
+  }
+  function logout(){localStorage.removeItem("loggedIn");location.reload()}
+
+  // === Friends ===
+  function loadFriends(){
+    const list=document.getElementById("friendsList");list.innerHTML="";
+    const data=readUser(currentUser);
+    data.friends.forEach(f=>{
+      const fData=readUser(f);
+      const div=document.createElement("div");
+      div.className="friend-box";
+      div.innerHTML=`<div class="friend-info"><img src="${fData.profile?.avatar||makeDefaultAvatar(f)}"><div>${fData.profile?.name||f}</div></div>`;
+      list.appendChild(div);
+    });
+    if(!data.friends.length) list.innerHTML="<i>No friends yet</i>";
+  }
+
+  // === Friend Requests ===
+  function sendFriendReq(to){
+    if(to===currentUser)return;
+    const toData=readUser(to);
+    if(!toData.requests.includes(currentUser) && !toData.friends.includes(currentUser)){
+      toData.requests.push(currentUser);writeUser(to,toData);
+    }
+    updateSearchResult(to);
+  }
+  function updateSearchResult(user){
+    const result=document.getElementById("searchResult");
+    const uData=readUser(currentUser);
+    const tData=readUser(user);
+    let status="Add Friend";
+    if(uData.friends.includes(user)) status="Friends";
+    else if(tData.requests.includes(currentUser)) status="Request Sent";
+    result.querySelector("button").textContent=status;
+    result.querySelector("button").disabled=status!=="Add Friend";
+  }
+
+  // === Inbox ===
+  function openInbox(){
+    document.getElementById("inboxModal").style.display="flex";
+    const list=document.getElementById("inboxList");list.innerHTML="";
+    const data=readUser(currentUser);
+    data.requests.forEach(r=>{
+      const rData=readUser(r);
+      const div=document.createElement("div");
+      div.className="friend-box";
+      div.innerHTML=`<div class="friend-info"><img src="${rData.profile?.avatar||makeDefaultAvatar(r)}"><div>${rData.profile?.name||r}</div></div>
+        <button onclick="acceptFriend('${r}')">Accept</button>`;
+      list.appendChild(div);
+    });
+    if(!data.requests.length) list.innerHTML="<i>No requests</i>";
+  }
+  function acceptFriend(from){
+    const me=readUser(currentUser),f=readUser(from);
+    me.friends.push(from);me.requests=me.requests.filter(x=>x!==from);
+    f.friends.push(currentUser);
+    writeUser(currentUser,me);writeUser(from,f);
+    loadFriends();openInbox();
+  }
+
+  // === Search Modal ===
+  const searchModal=document.getElementById("searchModal");
+  document.getElementById("searchUsersBtn").onclick=()=>{searchModal.style.display="flex"}
+  document.getElementById("closeSearch").onclick=()=>{searchModal.style.display="none"}
+  document.getElementById("searchInput").onkeyup=()=>{
+    const q=document.getElementById("searchInput").value.toLowerCase();
+    const result=document.getElementById("searchResult");result.innerHTML="";
+    if(!q)return;
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);if(k.startsWith("user_")){
+        const uname=k.replace("user_","");
+        if(uname.toLowerCase().includes(q)&&uname!==currentUser){
+          const uData=readUser(uname);
+          const btn=`<button onclick="sendFriendReq('${uname}')">Add Friend</button>`;
+          result.innerHTML=`<div class="friend-box"><div class="friend-info"><img src="${uData.profile?.avatar||makeDefaultAvatar(uname)}"><div>${uData.profile?.name||uname}</div></div>${btn}</div>`;
+          updateSearchResult(uname);
+          break;
+        }
+      }
+    }
+    if(!result.innerHTML) result.innerHTML="<i>No user found</i>";
+  }
+
+  // === Events ===
+  document.getElementById("signUpBtn").onclick=signUp;
+  document.getElementById("logInBtn").onclick=logIn;
+  document.getElementById("logoutBtn").onclick=logout;
+  document.getElementById("inboxBtn").onclick=openInbox;
+  document.getElementById("closeInbox").onclick=()=>{document.getElementById("inboxModal").style.display="none"};
+
+  // Auto login
+  window.onload=()=>{
+    const u=localStorage.getItem("loggedIn");
+    if(u){currentUser=u;showDashboard();}else{document.getElementById("auth").style.display="block";}
+  }
+</script>
+</body>
+</html>
